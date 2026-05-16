@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+
+# uv
+uv.lock
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / Bun
+node_modules/
+bun.lockb
+.svelte-kit/
+build/
+
+# ML
+ml/data/*.csv
+ml/data/*.parquet
+ml/data/*.pkl
+mlruns/
+*.joblib
+*.pkl
+
+# Docker
+pgdata/
+redisdata/
+
+# Misc
+*.log
+.coverage
+htmlcov/
+*.pyc
