@@ -50,3 +50,4 @@ redisdata/
 .coverage
 htmlcov/
 *.pyc
+docs/mlb_implementation_plan.md
