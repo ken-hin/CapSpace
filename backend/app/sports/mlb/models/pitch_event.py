@@ -15,7 +15,7 @@ Data source: Baseball Savant via pybaseball (Tier B — modeling data).
 from datetime import datetime
 
 from sqlalchemy import (
-    Integer, String, Float, ForeignKey, DateTime, Index,
+    Integer, String, Float, ForeignKey, DateTime, Index, PrimaryKeyConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,16 +23,21 @@ from app.models.base import Base
 
 
 class PitchEvent(Base):
-    """Single pitch from a Statcast-tracked MLB game."""
+    """Single pitch from a Statcast-tracked MLB game.
+
+    Uses composite PK (id, pitch_time) because TimescaleDB requires the
+    partitioning column to be part of any unique index/primary key.
+    """
 
     __tablename__ = "pitch_events"
     __table_args__ = (
+        PrimaryKeyConstraint("id", "pitch_time"),
         Index("ix_pitch_events_game_ab_pitch", "game_id", "at_bat_num", "pitch_num"),
         Index("ix_pitch_events_pitcher_time", "pitcher_id", "pitch_time"),
         Index("ix_pitch_events_batter_time", "batter_id", "pitch_time"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True)
 
     # MLBAM play ID for deduplication and linking back to live feed
     mlb_play_id: Mapped[str | None] = mapped_column(String(50), index=True)

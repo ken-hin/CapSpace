@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, ForeignKey, DateTime
+from sqlalchemy import String, Integer, ForeignKey, DateTime, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
@@ -11,12 +11,15 @@ class WeatherSnapshot(Base):
     Useful when building weather-sensitivity features that need granularity beyond
     the single snapshot stored on Game. Pulled from Open-Meteo at forecast + actual time.
 
-    TimescaleDB hypertable on `captured_at`. After the migration runs, execute:
-        SELECT create_hypertable('weather_snapshots', 'captured_at', if_not_exists => TRUE);
+    TimescaleDB hypertable on `captured_at`. Uses composite PK (id, captured_at) because
+    TimescaleDB requires the partitioning column in any unique index/PK.
     """
     __tablename__ = "weather_snapshots"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "captured_at"),
+    )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True)
     venue_id: Mapped[int] = mapped_column(ForeignKey("venues.id"), nullable=False)
 
     # Hypertable partitioning key — always tz-aware UTC

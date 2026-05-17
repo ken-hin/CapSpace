@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, BigInteger, Float, ForeignKey, DateTime, Index
+from sqlalchemy import String, Integer, BigInteger, Float, ForeignKey, DateTime, Index, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
@@ -11,18 +11,19 @@ class BookOdds(Base):
     One row per (game, book, market, side, captured_at) pull. Retains full line-movement
     history so closing-line value and sharp-money signals can be computed.
 
-    TimescaleDB hypertable on `captured_at`. After the migration runs, execute:
-        SELECT create_hypertable('book_odds', 'captured_at', if_not_exists => TRUE);
+    TimescaleDB hypertable on `captured_at`. Uses composite PK (id, captured_at) because
+    TimescaleDB requires the partitioning column in any unique index/PK.
     """
     __tablename__ = "book_odds"
     __table_args__ = (
+        PrimaryKeyConstraint("id", "captured_at"),
         # Primary query pattern: what are the current odds for a game across markets?
         Index("ix_book_odds_game_market_book_captured", "game_id", "market", "book", "captured_at"),
         # Player-prop query pattern: prop line history for a player
         Index("ix_book_odds_player_market_captured", "player_id", "market", "captured_at"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger, autoincrement=True)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False)
     # Null for game lines; set for player props
     player_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"))
