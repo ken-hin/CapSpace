@@ -40,4 +40,5 @@ class MlbPlayerProfile(Base, TimestampMixin):
     player = relationship("Player", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return f"<MlbPlayerProfile player_id={self.player_id} mlbam={self.mlb_player_id}>"

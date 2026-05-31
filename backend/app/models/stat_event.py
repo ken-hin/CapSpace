@@ -1,3 +1,10 @@
+"""StatEvent ORM model.
+
+Defines :class:`StatEvent`, a generic, sport-agnostic time-series log of
+individual scoring/stat occurrences (one row per event) stored in a TimescaleDB
+hypertable. It is the raw substrate the ``/stats`` aggregation endpoints query.
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, Float, ForeignKey, DateTime, JSON, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,4 +33,5 @@ class StatEvent(Base):
     details: Mapped[dict | None] = mapped_column(JSON)
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (event type and game id)."""
         return f"<StatEvent {self.event_type} game={self.game_id}>"

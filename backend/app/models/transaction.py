@@ -1,3 +1,10 @@
+"""Transaction ORM model.
+
+Defines :class:`Transaction`, a record of a player roster move (trade, call-up,
+designation, signing, option, recall) including the originating and destination
+teams and a freeform provider payload.
+"""
+
 from datetime import date
 from sqlalchemy import String, Integer, ForeignKey, Date, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -5,7 +12,12 @@ from app.models.base import Base
 
 
 class Transaction(Base):
-    """Roster moves: trades, callups, DFAs, signings, options, recalls."""
+    """A roster move: trade, call-up, DFA, signing, option, or recall.
+
+    Links the affected :class:`~app.models.player.Player` and the
+    ``from``/``to`` :class:`~app.models.team.Team` (either may be null, e.g. for
+    a free-agent signing) with the date and provider-supplied details.
+    """
     __tablename__ = "transactions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -26,4 +38,5 @@ class Transaction(Base):
     to_team = relationship("Team", foreign_keys=[to_team_id], lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (type, player, date)."""
         return f"<Transaction {self.transaction_type} player={self.player_id} {self.transaction_date}>"

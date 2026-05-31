@@ -1,3 +1,11 @@
+"""Seed all 30 MLB teams from the MLB Stats API.
+
+Fetches the team list from the public MLB Stats API, maps each team to our
+:class:`~app.models.team.Team` columns (resolving the home-venue foreign key
+from previously-seeded venues and adding hardcoded brand colors the API omits),
+and upserts on ``external_id``. Designed to run after :mod:`seed_venues`.
+"""
+
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,8 +14,11 @@ from app.models.team import Team
 from app.models.venue import Venue
 from app.models.enums import Sport
 
+# Public MLB Stats API endpoint returning all MLB (sportId=1) teams.
 MLB_API_TEAMS_URL = "https://statsapi.mlb.com/api/v1/teams?sportId=1"
 
+# Hardcoded primary/secondary brand colors keyed by MLB Stats API team id
+# (the API does not expose team colors). Comment marks each team's abbreviation.
 TEAM_COLORS: dict[int, dict] = {
     108: {"primary": "#BA0021", "secondary": "#003263"},  # LAA
     109: {"primary": "#A71930", "secondary": "#E3D4AD"},  # ARI
@@ -43,6 +54,14 @@ TEAM_COLORS: dict[int, dict] = {
 
 
 async def fetch_mlb_teams() -> list[dict]:
+    """Fetch the raw team list from the MLB Stats API.
+
+    Returns:
+        list[dict]: The provider's raw team objects.
+
+    Raises:
+        httpx.HTTPStatusError: If the API responds with a non-2xx status.
+    """
     async with httpx.AsyncClient() as client:
         resp = await client.get(MLB_API_TEAMS_URL)
         resp.raise_for_status()
@@ -50,7 +69,19 @@ async def fetch_mlb_teams() -> list[dict]:
 
 
 def transform_team(raw: dict, venue_lookup: dict[str, int]) -> dict:
-    """Map MLB Stats API team → our Team model columns."""
+    """Map a raw MLB Stats API team object to ``Team`` model columns.
+
+    Resolves the home-venue foreign key via ``venue_lookup``, attaches hardcoded
+    brand colors, and normalizes league/division names to short codes.
+
+    Args:
+        raw: A single raw team object from the MLB Stats API.
+        venue_lookup: Mapping of venue ``external_id`` (API id as str) to the
+            seeded venue's database id.
+
+    Returns:
+        dict: Keyword arguments ready to insert/upsert as a ``Team`` row.
+    """
     team_id = raw["id"]
     colors = TEAM_COLORS.get(team_id, {})
     venue_api_id = str(raw.get("venue", {}).get("id", ""))
@@ -76,7 +107,18 @@ def transform_team(raw: dict, venue_lookup: dict[str, int]) -> dict:
 
 
 async def seed_teams(session: AsyncSession) -> int:
-    """Fetch from MLB API, resolve venue FKs, and upsert."""
+    """Fetch teams from the MLB API, resolve venue FKs, and upsert them.
+
+    Performs an idempotent upsert keyed on ``external_id`` so re-running refreshes
+    mutable fields (name, colors, division, home venue) without creating
+    duplicates.
+
+    Args:
+        session: Active async database session (venues must already be seeded).
+
+    Returns:
+        int: The number of team rows upserted.
+    """
     # Build venue external_id → DB id lookup
     result = await session.execute(select(Venue.id, Venue.external_id))
     venue_lookup = {row.external_id: row.id for row in result}

@@ -1,3 +1,10 @@
+"""IngestionRun ORM model.
+
+Defines :class:`IngestionRun`, the audit-log row written for every background
+(Celery) ingestion task execution. Captures status, record counts, errors, and
+freeform metadata so data-freshness issues and stuck jobs can be diagnosed.
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
@@ -43,4 +50,5 @@ class IngestionRun(Base):
     )
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (task name, status, start time)."""
         return f"<IngestionRun {self.task_name} status={self.status} at={self.started_at}>"

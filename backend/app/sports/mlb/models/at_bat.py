@@ -61,6 +61,7 @@ class AtBat(Base):
     batter = relationship("Player", foreign_keys=[batter_id], lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<AtBat game={self.game_id} ab={self.at_bat_num} "
             f"result={self.result}>"

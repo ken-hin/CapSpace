@@ -1,3 +1,11 @@
+"""ClosingLine ORM model.
+
+Defines :class:`ClosingLine`, the final pre-game odds for each
+(game, book, market, period, side) combination. Populated nightly from the last
+:class:`~app.models.book_odds.BookOdds` row and used as the benchmark for
+closing-line value (CLV) calculations on settled bets.
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, Float, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -39,4 +47,5 @@ class ClosingLine(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (book, market, side, game id)."""
         return f"<ClosingLine {self.book} {self.market} {self.side} game={self.game_id}>"

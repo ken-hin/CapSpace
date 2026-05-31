@@ -1,3 +1,10 @@
+"""Game ORM model.
+
+Defines the sport-agnostic :class:`Game` entity: a single contest between two
+teams at a venue, carrying schedule/timing, result (status and scores), season
+context, and a denormalized weather snapshot captured at game time.
+"""
+
 from datetime import date, datetime
 from sqlalchemy import String, Integer, ForeignKey, DateTime, Boolean, Date, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -6,6 +13,13 @@ from app.models.enums import Sport
 
 
 class Game(Base, TimestampMixin):
+    """A single scheduled or completed game between two teams.
+
+    Central entity that odds, predictions, feature snapshots, and stat events
+    all reference. Tracks the home/away teams and venue, scheduling fields, the
+    live/final result, season metadata, and a flattened set of weather columns
+    describing conditions at first pitch / tip-off.
+    """
     __tablename__ = "games"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -54,4 +68,5 @@ class Game(Base, TimestampMixin):
     venue = relationship("Venue", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (id, matchup, and sport)."""
         return f"<Game {self.id}: {self.home_team_id} vs {self.away_team_id} ({self.sport})>"

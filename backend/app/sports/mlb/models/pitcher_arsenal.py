@@ -61,6 +61,7 @@ class PitcherArsenal(Base, TimestampMixin):
     pitcher = relationship("Player", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<PitcherArsenal pitcher={self.pitcher_id} "
             f"season={self.season} type={self.pitch_type} usage={self.usage_pct:.1%}>"

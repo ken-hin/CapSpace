@@ -1,3 +1,10 @@
+"""Venue ORM model.
+
+Defines the sport-agnostic :class:`Venue` entity: a stadium/arena/court with
+geographic, capacity, surface, roof, and timezone metadata used both for
+display and as inputs to weather- and park-sensitive features.
+"""
+
 from sqlalchemy import String, Integer, Enum, Float, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
@@ -5,6 +12,12 @@ from app.models.enums import Sport
 
 
 class Venue(Base, TimestampMixin):
+    """A playing venue (stadium, arena, ballpark, or court).
+
+    Stores location (city/state/country, lat/long, elevation, timezone) and
+    physical attributes (capacity, surface, roof type) that matter for weather
+    and park-factor modeling. Linked back to the home :class:`~app.models.team.Team`.
+    """
     __tablename__ = "venues"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -33,4 +46,5 @@ class Venue(Base, TimestampMixin):
     team = relationship("Team", back_populates="venue", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (name and location)."""
         return f"<Venue {self.name} ({self.city}, {self.state})>"

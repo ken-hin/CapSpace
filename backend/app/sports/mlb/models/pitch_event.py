@@ -156,6 +156,7 @@ class PitchEvent(Base):
     batter = relationship("Player", foreign_keys=[batter_id], lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<PitchEvent game={self.game_id} ab={self.at_bat_num} "
             f"pitch={self.pitch_num} type={self.pitch_type}>"

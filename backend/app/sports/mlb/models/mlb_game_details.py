@@ -62,4 +62,5 @@ class MlbGameDetails(Base, TimestampMixin):
     save_pitcher = relationship("Player", foreign_keys=[save_pitcher_id], lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return f"<MlbGameDetails game_id={self.game_id} pk={self.mlb_game_pk} type={self.game_type}>"

@@ -53,6 +53,7 @@ class BatterVsPitcher(Base, TimestampMixin):
     pitcher = relationship("Player", foreign_keys=[pitcher_id], lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<BatterVsPitcher batter={self.batter_id} vs pitcher={self.pitcher_id} "
             f"pa={self.pa} avg={self.avg}>"

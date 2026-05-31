@@ -56,6 +56,7 @@ class GameLineup(Base):
     player = relationship("Player", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<GameLineup game={self.game_id} team={self.team_id} "
             f"#{self.batting_order} player={self.player_id} pos={self.position}>"

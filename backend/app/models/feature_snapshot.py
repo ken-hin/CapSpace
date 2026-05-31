@@ -1,3 +1,11 @@
+"""FeatureSnapshot ORM model.
+
+Defines :class:`FeatureSnapshot`, a pre-computed ML feature vector for a
+(game, side) pair at a given feature version. It is the hand-off point between
+the ML feature pipeline (writer) and the prediction service (reader), letting
+predictions be served without recomputing features at request time.
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, ForeignKey, DateTime, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -41,6 +49,7 @@ class FeatureSnapshot(Base):
     game = relationship("Game", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (game, side, feature version)."""
         return (
             f"<FeatureSnapshot game={self.game_id} side={self.side} "
             f"v={self.feature_version}>"

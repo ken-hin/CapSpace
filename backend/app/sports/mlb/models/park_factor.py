@@ -65,4 +65,5 @@ class ParkFactor(Base):
     venue = relationship("Venue", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return f"<ParkFactor venue_id={self.venue_id} season={self.season} runs={self.factor_runs}>"

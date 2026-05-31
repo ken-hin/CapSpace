@@ -62,6 +62,7 @@ class MlbStandings(Base, TimestampMixin):
     team = relationship("Team", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<MlbStandings team={self.team_id} date={self.as_of_date} "
             f"record={self.wins}-{self.losses}>"

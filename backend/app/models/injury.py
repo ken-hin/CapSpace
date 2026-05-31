@@ -1,3 +1,10 @@
+"""Injury ORM model.
+
+Defines :class:`Injury`, a record of a player's injured-list / availability
+status over time. Sport-specific status vocabularies are stored as plain
+strings, and an index supports fast "current injuries for this player" lookups.
+"""
+
 from datetime import date, datetime
 from sqlalchemy import String, Integer, ForeignKey, Date, DateTime, Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -5,7 +12,12 @@ from app.models.base import Base
 
 
 class Injury(Base):
-    """Current and historical IL / injury status entries for players."""
+    """Current and historical IL / injury status entries for players.
+
+    Each row captures a status (e.g. ``IL15``, ``DTD``, ``ACTIVE``), optional
+    reason and date range, and an ``is_current`` flag marking the active status,
+    linked to the affected :class:`~app.models.player.Player`.
+    """
     __tablename__ = "injuries"
     __table_args__ = (
         # Fast lookup: "what injuries is this player currently dealing with?"
@@ -28,4 +40,5 @@ class Injury(Base):
     player = relationship("Player", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (player, status, current flag)."""
         return f"<Injury player={self.player_id} status={self.status} current={self.is_current}>"

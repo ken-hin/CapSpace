@@ -1,3 +1,7 @@
+# Project metadata and dependency manifest (PEP 621) for the CapSpace backend.
+# Defines the runtime dependencies, the dev/test dependency group, and the
+# hatchling build configuration that packages the `app` module.
+
 [project]
 name = "capspace-backend"
 version = "0.1.0"
