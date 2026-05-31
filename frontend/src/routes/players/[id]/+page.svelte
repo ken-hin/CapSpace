@@ -1,11 +1,20 @@
+<!--
+  Player detail page (route: /players/[id]).
+
+  Loads a single player's profile and their aggregated season stats on mount and
+  renders the bio header plus a grid of per-stat cards.
+-->
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { fetchPlayer, fetchPlayerStats } from '$api/client';
+  // Reactive state: the player profile, their stats, and a loading flag.
   let player = $state(null);
   let stats = $state([]);
   let loading = $state(true);
+  // Player id from the route params, kept in sync reactively.
   const playerId = $derived($page.params.id);
+  // On mount, load the player and their stats together.
   onMount(async () => {
     try { const [p, s] = await Promise.all([fetchPlayer(playerId), fetchPlayerStats(playerId)]); player = p; stats = s; }
     catch (err) { console.error(err); } finally { loading = false; }

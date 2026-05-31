@@ -1,5 +1,14 @@
+<!--
+  Root layout for the entire app.
+
+  Wraps every page in the shared chrome: global stylesheet import, top navigation
+  bar (Games / Players / Predictions), the main content area where the active
+  page is rendered, and the footer. Applied to all routes by SvelteKit.
+-->
 <script>
+  // Global Tailwind / shadcn styles, loaded once for the whole app.
   import '../app.css';
+  // `children` is the active page's content, rendered via {@render children()} below.
   let { children } = $props();
 </script>
 

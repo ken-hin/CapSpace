@@ -1,8 +1,16 @@
+<!--
+  Predictions page (route: /predictions).
+
+  Lists upcoming (scheduled) games as entry points to their ML-generated pre-game
+  forecasts; each card links to the game detail page.
+-->
 <script>
   import { onMount } from 'svelte';
   import { fetchGames } from '$api/client';
+  // Reactive state: the upcoming games and a loading flag.
   let upcomingGames = $state([]);
   let loading = $state(true);
+  // On mount, fetch games scheduled for the future.
   onMount(async () => { try { upcomingGames = await fetchGames({ status: 'scheduled' }); } catch (err) { console.error(err); } finally { loading = false; } });
 </script>
 

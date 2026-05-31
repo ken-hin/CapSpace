@@ -1,13 +1,25 @@
+<!--
+  Games list page (route: /games).
+
+  Shows all games with status filter chips (all / scheduled / live / final).
+  Selecting a filter re-queries the backend; each card links to the game detail page.
+-->
 <script>
   import { onMount } from 'svelte';
   import { fetchGames } from '$api/client';
 
+  // Reactive state: the fetched games, a loading flag, and the active status filter.
   let games = $state([]);
   let loading = $state(true);
   let filter = $state('all');
 
+  // Load the default ('all') list once the component mounts.
   onMount(() => loadGames());
 
+  /**
+   * Fetch games from the API for the currently selected `filter`.
+   * `'all'` sends no status param; any other value filters by that status.
+   */
   async function loadGames() {
     loading = true;
     try {
