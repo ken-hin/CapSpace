@@ -1,3 +1,11 @@
+"""BetRecord ORM model.
+
+Defines :class:`BetRecord`, the paper- or real-money wager placed off the back
+of a :class:`~app.models.prediction.Prediction`. This table is the ground truth
+for evaluating model profitability, including settlement results and captured
+closing-line value (CLV).
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, Float, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -46,6 +54,7 @@ class BetRecord(Base):
     prediction = relationship("Prediction", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (prediction, book, market, result)."""
         return (
             f"<BetRecord prediction={self.prediction_id} {self.book} "
             f"{self.market} result={self.result}>"

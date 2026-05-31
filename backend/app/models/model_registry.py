@@ -1,3 +1,11 @@
+"""ModelRegistry ORM model.
+
+Defines :class:`ModelRegistry`, the catalog of every trained model version, its
+training window, hyperparameters, evaluation metrics, and MLflow run link. The
+prediction service consults this table (via ``is_active``) to choose the model
+serving each sport/target.
+"""
+
 from datetime import date, datetime
 from sqlalchemy import String, Integer, DateTime, Date, Boolean, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -52,4 +60,5 @@ class ModelRegistry(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (name, version, active flag)."""
         return f"<ModelRegistry {self.name} v{self.version} active={self.is_active}>"

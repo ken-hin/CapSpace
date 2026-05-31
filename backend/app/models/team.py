@@ -1,3 +1,10 @@
+"""Team ORM model.
+
+Defines the sport-agnostic :class:`Team` entity: a franchise/club identified by
+an external provider id, with descriptive metadata (league, division, colors,
+logo) and relationships to its home venue and roster of players.
+"""
+
 from sqlalchemy import String, Integer, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
@@ -5,6 +12,13 @@ from app.models.enums import Sport
 
 
 class Team(Base, TimestampMixin):
+    """A sports team / franchise.
+
+    Sport-agnostic record keyed internally by ``id`` and externally by
+    ``external_id`` (the data provider's id). Holds branding and organizational
+    metadata and links to its home :class:`~app.models.venue.Venue` and its
+    :class:`~app.models.player.Player` roster.
+    """
     __tablename__ = "teams"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -29,4 +43,5 @@ class Team(Base, TimestampMixin):
     players = relationship("Player", back_populates="team", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (abbreviation and name)."""
         return f"<Team {self.abbreviation} - {self.name}>"

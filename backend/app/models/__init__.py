@@ -1,3 +1,15 @@
+"""Sport-agnostic core ORM models package.
+
+Re-exports every core (sport-agnostic) SQLAlchemy model so they can be imported
+from a single namespace (``from app.models import Game``) and, importantly, so
+that all model classes are registered on ``Base.metadata`` before table
+creation or Alembic autogeneration runs.
+
+Import order matters: tables with no foreign keys are imported first, followed
+by those that reference them, to keep mapper configuration and any
+metadata-driven DDL deterministic.
+"""
+
 # Sport-agnostic core models
 # Import order matters: tables with no FKs first, then those that reference them.
 
@@ -40,6 +52,7 @@ from app.models.bet_record import BetRecord  # noqa: F401
 # Generic time-series event log (depends on Game + Player + Team)
 from app.models.stat_event import StatEvent  # noqa: F401
 
+# Public model names re-exported by this package.
 __all__ = [
     "Base",
     "TimestampMixin",

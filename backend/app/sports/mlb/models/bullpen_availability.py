@@ -53,6 +53,7 @@ class BullpenAvailability(Base):
     player = relationship("Player", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<BullpenAvailability game={self.game_id} player={self.player_id} "
             f"avail={self.is_available} b2b={self.is_back_to_back}>"

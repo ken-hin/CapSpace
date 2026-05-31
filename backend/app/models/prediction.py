@@ -1,3 +1,11 @@
+"""Prediction ORM model.
+
+Defines :class:`Prediction`, a single model output for a game/market produced
+offline by the ML pipeline: probability and distributional forecasts plus
+derived value metrics (edge, expected value, recommended stake) used to decide
+whether a bet clears the threshold.
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, Float, ForeignKey, DateTime, JSON, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -5,7 +13,13 @@ from app.models.base import Base
 
 
 class Prediction(Base):
-    """Pre-game prediction generated offline by the ML pipeline."""
+    """A pre-game prediction generated offline by the ML pipeline.
+
+    Links a game to the model (:class:`~app.models.model_registry.ModelRegistry`)
+    that produced it and records the market/side/line being predicted, the
+    probability outputs, and edge/value metrics versus the book's implied
+    probability. Some legacy columns are retained for backward compatibility.
+    """
     __tablename__ = "predictions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -49,4 +63,5 @@ class Prediction(Base):
     model = relationship("ModelRegistry", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (prediction type and game id)."""
         return f"<Prediction {self.prediction_type} game={self.game_id}>"

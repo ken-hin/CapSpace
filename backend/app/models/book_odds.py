@@ -1,3 +1,11 @@
+"""BookOdds ORM model.
+
+Defines :class:`BookOdds`, a time-series record of sportsbook odds snapshots
+(one row per pull) stored in a TimescaleDB hypertable. Retains the full
+line-movement history needed to compute closing-line value and detect
+sharp-money moves.
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, BigInteger, Float, ForeignKey, DateTime, Index, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -59,6 +67,7 @@ class BookOdds(Base):
     source: Mapped[str] = mapped_column(String(100), nullable=False)
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (book, market, side, game, time)."""
         return (
             f"<BookOdds {self.book} {self.market} {self.side} "
             f"game={self.game_id} at={self.captured_at}>"

@@ -1,3 +1,11 @@
+"""WeatherSnapshot ORM model.
+
+Defines :class:`WeatherSnapshot`, a time-series of per-venue weather readings
+(pulled from Open-Meteo) stored in a TimescaleDB hypertable. Provides finer
+granularity than the single weather snapshot denormalized onto
+:class:`~app.models.game.Game`, for building weather-sensitivity features.
+"""
+
 from datetime import datetime
 from sqlalchemy import String, Integer, ForeignKey, DateTime, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,4 +45,5 @@ class WeatherSnapshot(Base):
     venue = relationship("Venue", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (venue, capture time, condition)."""
         return f"<WeatherSnapshot venue={self.venue_id} at={self.captured_at} {self.condition}>"

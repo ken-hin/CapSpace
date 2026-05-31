@@ -157,6 +157,7 @@ class MlbPlayerSplitStats(Base):
     team = relationship("Team", lazy="selectin")
 
     def __repr__(self) -> str:
+        """Return a concise debug representation for logging/debugging."""
         return (
             f"<MlbPlayerSplitStats player={self.player_id} "
             f"season={self.season} role={self.role} split={self.split_type}>"

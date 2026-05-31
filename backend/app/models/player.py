@@ -1,3 +1,11 @@
+"""Player ORM model.
+
+Defines the sport-agnostic :class:`Player` entity: an athlete with biographical
+details (name, birth, physical attributes), role/position metadata, and
+handedness fields (``bats`` / ``throws``) that drive split-based features. Each
+player optionally belongs to a current :class:`~app.models.team.Team`.
+"""
+
 from sqlalchemy import String, Integer, ForeignKey, Enum, Date, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
@@ -5,6 +13,12 @@ from app.models.enums import Sport
 
 
 class Player(Base, TimestampMixin):
+    """An individual athlete.
+
+    Sport-agnostic record keyed externally by ``external_id``. Captures identity
+    and bio data plus role attributes (position, handedness) used by downstream
+    feature engineering. ``team_id`` is nullable to accommodate free agents.
+    """
     __tablename__ = "players"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -36,4 +50,5 @@ class Player(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     def __repr__(self) -> str:
+        """Return a concise debug representation (player's full name)."""
         return f"<Player {self.first_name} {self.last_name}>"

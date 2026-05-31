@@ -1,4 +1,11 @@
-"""Seed all 30 MLB venues from the MLB Stats API + hardcoded analytics fields."""
+"""Seed all 30 MLB venues from the MLB Stats API + hardcoded analytics fields.
+
+Venue identity/location comes from the MLB Stats API (hydrated onto the teams
+endpoint), while analytics-critical attributes the API doesn't provide
+(capacity, surface, roof type, elevation, timezone, coordinates) are supplied by
+the hardcoded :data:`VENUE_DETAILS` table keyed by MLB Stats API venue id. Rows
+are upserted on ``external_id`` so the seeder is safe to re-run.
+"""
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -208,7 +215,17 @@ VENUE_DETAILS: dict[int, dict] = {
 
 
 async def fetch_venues_from_api() -> list[dict]:
-    """Pull venue info embedded in the teams endpoint."""
+    """Pull deduplicated venue info embedded in the teams endpoint.
+
+    The MLB Stats API exposes venue data hydrated onto each team; this collects
+    unique venues across all teams.
+
+    Returns:
+        list[dict]: One dict per distinct venue with ``api_id``, name, and location.
+
+    Raises:
+        httpx.HTTPStatusError: If the API responds with a non-2xx status.
+    """
     async with httpx.AsyncClient() as client:
         resp = await client.get(MLB_API_TEAMS_URL)
         resp.raise_for_status()
@@ -233,7 +250,16 @@ async def fetch_venues_from_api() -> list[dict]:
 
 
 def transform_venue(raw: dict) -> dict:
-    """Merge API data with hardcoded analytics fields."""
+    """Merge API venue data with hardcoded analytics fields into model columns.
+
+    Args:
+        raw: A venue dict from :func:`fetch_venues_from_api` (must include ``api_id``).
+
+    Returns:
+        dict: Keyword arguments ready to insert/upsert as a ``Venue`` row; the
+        analytics fields fall back to ``None``/defaults when the venue id is not
+        present in ``VENUE_DETAILS``.
+    """
     vid = raw["api_id"]
     details = VENUE_DETAILS.get(vid, {})
 
@@ -256,7 +282,17 @@ def transform_venue(raw: dict) -> dict:
 
 
 async def seed_venues(session: AsyncSession) -> int:
-    """Fetch venues from MLB API, enrich with analytics fields, and upsert."""
+    """Fetch venues from the MLB API, enrich with analytics fields, and upsert.
+
+    Performs an idempotent upsert keyed on ``external_id`` so re-running refreshes
+    mutable fields without creating duplicates.
+
+    Args:
+        session: Active async database session.
+
+    Returns:
+        int: The number of venue rows upserted.
+    """
     raw = await fetch_venues_from_api()
     venues = [transform_venue(v) for v in raw]
 
