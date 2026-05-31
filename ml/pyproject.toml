@@ -1,3 +1,7 @@
+# Project metadata and dependency manifest (PEP 621) for the CapSpace ML pipeline.
+# Declares the data-science / ML runtime dependencies (pandas, scikit-learn,
+# MLflow, etc.) and the hatchling build configuration that packages the `src` module.
+
 [project]
 name = "capspace-ml"
 version = "0.1.0"
