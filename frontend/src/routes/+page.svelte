@@ -1,11 +1,19 @@
+<!--
+  Home dashboard page (route: /).
+
+  Landing view that fetches and displays the current live games and the next few
+  upcoming games on mount, each linking through to its game detail page.
+-->
 <script>
   import { onMount } from 'svelte';
   import { fetchGames } from '$api/client';
 
+  // Reactive UI state (Svelte 5 runes): the two game lists and a loading flag.
   let liveGames = $state([]);
   let upcomingGames = $state([]);
   let loading = $state(true);
 
+  // On mount, load live and upcoming games in parallel; always clear loading.
   onMount(async () => {
     try {
       const [live, upcoming] = await Promise.all([

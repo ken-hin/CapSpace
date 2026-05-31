@@ -1,8 +1,16 @@
+<!--
+  Players list page (route: /players).
+
+  Fetches all players on mount and renders them in a table; each name links to
+  the player's detail page.
+-->
 <script>
   import { onMount } from 'svelte';
   import { fetchPlayers } from '$api/client';
+  // Reactive state: the fetched players and a loading flag.
   let players = $state([]);
   let loading = $state(true);
+  // Load the full player list once the component mounts.
   onMount(async () => { try { players = await fetchPlayers(); } catch (err) { console.error(err); } finally { loading = false; } });
 </script>
 

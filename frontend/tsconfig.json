@@ -1,3 +1,7 @@
+// TypeScript configuration (JSONC — comments allowed).
+// Extends the auto-generated SvelteKit base config and layers on project
+// compiler options: type-check JS as well as TS (allowJs/checkJs), strict mode,
+// and bundler-style module resolution to match Vite.
 {
   "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {

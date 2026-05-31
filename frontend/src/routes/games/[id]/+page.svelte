@@ -1,16 +1,27 @@
+<!--
+  Game detail page (route: /games/[id]).
+
+  Shows a single game's scoreboard, box score, and — when the game is live — a
+  real-time event feed driven by a WebSocket. The socket updates the running
+  score and prepends incoming events; it is closed when the page is destroyed.
+-->
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { fetchGame, fetchGameStats } from '$api/client';
   import { createGameSocket } from '$lib/websocket';
 
+  // Reactive state for the game, its box-score stats, and the live event list.
   let game = $state(null);
   let stats = $state([]);
   let liveEvents = $state([]);
   let loading = $state(true);
+  // Live WebSocket handle (non-reactive); null when the game isn't live.
   let socket = null;
+  // Game id taken from the route params, kept in sync reactively.
   const gameId = $derived($page.params.id);
 
+  // On mount, load the game and its stats; if live, open the live event socket.
   onMount(async () => {
     try {
       const [gameData, statsData] = await Promise.all([fetchGame(gameId), fetchGameStats(gameId)]);
@@ -18,13 +29,16 @@
       stats = statsData;
       if (game.status === 'live') {
         socket = createGameSocket(gameId, (event) => {
+          // Keep only the 50 most recent events, newest first.
           liveEvents = [event, ...liveEvents.slice(0, 49)];
+          // Update the live score when an event carries one.
           if (event.home_score !== undefined) game = { ...game, home_score: event.home_score, away_score: event.away_score };
         });
       }
     } catch (err) { console.error('Failed to load game:', err); }
     finally { loading = false; }
   });
+  // Always tear down the socket when leaving the page to avoid leaks.
   onDestroy(() => { if (socket) socket.close(); });
 </script>
 
