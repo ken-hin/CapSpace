@@ -13,14 +13,26 @@ from app.models.base import Base
 
 
 class WeatherSnapshot(Base):
-    """
-    Time-series weather readings per venue.
+    """Time-series weather readings per venue.
 
     Useful when building weather-sensitivity features that need granularity beyond
     the single snapshot stored on Game. Pulled from Open-Meteo at forecast + actual time.
 
-    TimescaleDB hypertable on `captured_at`. Uses composite PK (id, captured_at) because
-    TimescaleDB requires the partitioning column in any unique index/PK.
+    TimescaleDB hypertable on ``captured_at``. Uses composite PK (id, captured_at)
+    because TimescaleDB requires the partitioning column in any unique index/PK.
+
+    Attributes:
+        id: Auto-incrementing id (part of composite PK with ``captured_at``).
+        venue_id: FK to the :class:`~app.models.venue.Venue`.
+        captured_at: Reading time and hypertable partition key (tz-aware UTC).
+        temp_f: Air temperature, in Fahrenheit.
+        wind_mph: Wind speed, in mph.
+        wind_dir_deg: Wind direction in compass degrees (0=N, 90=E, 180=S, 270=W).
+        humidity_pct: Relative humidity, as a percentage.
+        precip_chance_pct: Probability of precipitation, as a percentage.
+        condition: Sky/precip condition (``"clear"`` | ``"cloudy"`` | ``"rain"`` |
+            ``"snow"`` | ``"dome"`` | ...).
+        venue: Eager-loaded :class:`~app.models.venue.Venue` relationship.
     """
     __tablename__ = "weather_snapshots"
     __table_args__ = (

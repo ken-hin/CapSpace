@@ -18,6 +18,26 @@ class Team(Base, TimestampMixin):
     ``external_id`` (the data provider's id). Holds branding and organizational
     metadata and links to its home :class:`~app.models.venue.Venue` and its
     :class:`~app.models.player.Player` roster.
+
+    Attributes:
+        id: Surrogate primary key.
+        external_id: Data provider's team identifier; unique, required.
+        sport: Sport this team belongs to (indexed enum).
+        name: Full team name; unique.
+        abbreviation: Short team code, e.g. ``"NYY"``; unique.
+        city: Home city.
+        founded_year: Year the franchise was founded.
+        league: League/circuit, e.g. ``"AL"`` or ``"NL"`` for MLB.
+        conference: Conference name (sport-dependent; may be null).
+        division: Division name, e.g. ``"AL East"``.
+        logo_url: URL to the team logo image.
+        primary_color: Primary brand color (hex string).
+        secondary_color: Secondary brand color (hex string).
+        home_venue_id: FK to the home :class:`~app.models.venue.Venue`.
+        venue: Eager-loaded home :class:`~app.models.venue.Venue` relationship.
+        players: Eager-loaded roster of :class:`~app.models.player.Player` rows.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
     """
     __tablename__ = "teams"
 

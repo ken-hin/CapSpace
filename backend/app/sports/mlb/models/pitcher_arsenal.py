@@ -16,7 +16,38 @@ from app.models.base import Base, TimestampMixin
 
 
 class PitcherArsenal(Base, TimestampMixin):
-    """Single pitch type in a pitcher's arsenal for a given season."""
+    """Single pitch type in a pitcher's arsenal for a given season.
+
+    Aggregated from Statcast pitch-level data — one row per
+    (pitcher, season, pitch_type) — capturing usage, characteristics, and outcome
+    metrics. Strong matchup features for strikeout props live here. The unique
+    constraint enforces one row per (pitcher, season, pitch_type).
+
+    Attributes:
+        id: Surrogate primary key.
+        pitcher_id: FK to the pitching :class:`~app.models.player.Player`.
+        season: Season year.
+        pitch_type: Pitch classification code, matching
+            :attr:`~app.sports.mlb.models.pitch_event.PitchEvent.pitch_type`
+            (``"FF"`` | ``"SL"`` | ``"CU"`` | ``"CH"`` | ``"SI"`` | ``"FC"`` |
+            ``"KC"`` | ``"FS"`` | ``"KN"`` | ``"EP"``).
+        pitch_count: Number of pitches of this type thrown in the season.
+        usage_pct: Share of total pitches this type represents.
+        avg_velocity: Average release velocity, in mph (nullable).
+        avg_spin_rate: Average spin rate, in rpm (nullable).
+        avg_pfx_x: Average horizontal movement, in inches (nullable).
+        avg_pfx_z: Average vertical movement, in inches (nullable).
+        whiff_pct: Swing-and-miss rate on this pitch (nullable).
+        csw_pct: Called-strike-plus-whiff rate (nullable).
+        chase_pct: Out-of-zone swing rate induced (nullable).
+        xwoba_against: Expected wOBA allowed on this pitch (nullable).
+        slg_against: Slugging allowed on this pitch (nullable).
+        vs_lhh_woba: wOBA allowed vs left-handed hitters (nullable).
+        vs_rhh_woba: wOBA allowed vs right-handed hitters (nullable).
+        pitcher: Eager-loaded :class:`~app.models.player.Player` relationship.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
+    """
 
     __tablename__ = "pitcher_arsenals"
     __table_args__ = (

@@ -13,14 +13,27 @@ from app.models.base import Base
 
 
 class ClosingLine(Base):
-    """
-    Last odds per (game, market, book, side) snapshot before first pitch / tipoff.
+    """Last odds per (game, market, book, side) snapshot before first pitch / tipoff.
 
     Populated by a nightly job that pulls the final BookOdds row for each combination.
     Critical for closing-line value (CLV) calculation on settled bets.
 
     Unique constraint enforces exactly one row per (game, book, market, period, side).
     If the source dataset has duplicates, upsert on the constraint rather than insert.
+
+    Attributes:
+        id: Surrogate primary key.
+        game_id: FK to the :class:`~app.models.game.Game`.
+        book: Sportsbook identifier.
+        market: Market key (mirrors :class:`~app.models.book_odds.BookOdds`).
+        period: Game period the line covers (nullable).
+        side: Side of the market.
+        line: Closing point/total line (null for moneylines).
+        american_price: Closing American odds.
+        decimal_price: Closing decimal odds.
+        implied_prob: Vig-inclusive implied probability at the close.
+        captured_at: ``captured_at`` of the source :class:`~app.models.book_odds.BookOdds`
+            row this close was taken from (tz-aware).
     """
     __tablename__ = "closing_lines"
     __table_args__ = (

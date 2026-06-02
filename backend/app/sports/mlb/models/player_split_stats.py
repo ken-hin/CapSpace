@@ -19,7 +19,37 @@ from app.models.base import Base
 
 
 class MlbPlayerSplitStats(Base):
-    """Split-specific stat line for an MLB player (one row per player/season/role/split)."""
+    """Split-specific stat line for an MLB player (one row per player/season/role/split).
+
+    Same column shape as
+    :class:`~app.sports.mlb.models.player_season_stats.MlbPlayerSeasonStats` plus a
+    ``split_type`` discriminator. Splits are situational subsets of a season line
+    (handedness matchups, home/away, day/night, pre/post All-Star break, and rolling
+    7/15/30-day windows) and are key inputs for matchup modeling. The unique
+    constraint enforces one row per (player, season, role, split_type).
+
+    The statistical columns are grouped and documented inline below under banner
+    comments; only the identity/metadata columns are summarized here.
+
+    Attributes:
+        id: Surrogate primary key.
+        player_id: FK to the :class:`~app.models.player.Player`.
+        season: Season year.
+        team_id: FK to the :class:`~app.models.team.Team` (nullable).
+        role: Stat group populated (``"batter"`` | ``"pitcher"``).
+        split_type: Situational split identifier (``"vs_lhp"`` | ``"vs_rhp"`` |
+            ``"home"`` | ``"away"`` | ``"day"`` | ``"night"`` | ``"pre_asg"`` |
+            ``"post_asg"`` | ``"last_7d"`` | ``"last_15d"`` | ``"last_30d"``).
+        updated_at: Last refresh timestamp (server default ``now()``).
+        source: Data source identifier; defaults to ``"mlb_stats_api"``.
+        player: Eager-loaded :class:`~app.models.player.Player` relationship.
+        team: Eager-loaded :class:`~app.models.team.Team` relationship.
+
+    Note:
+        Batter and pitcher statistical columns mirror
+        :class:`~app.sports.mlb.models.player_season_stats.MlbPlayerSeasonStats`
+        and are defined and documented inline below.
+    """
 
     __tablename__ = "mlb_player_split_stats"
     __table_args__ = (

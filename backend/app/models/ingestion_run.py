@@ -12,16 +12,26 @@ from app.models.base import Base
 
 
 class IngestionRun(Base):
-    """
-    Audit log for every Celery ingestion task execution.
+    """Audit log for every Celery ingestion task execution.
 
     Indispensable for debugging data freshness issues. Every MLB task writes a row
     on start (status='running') and updates it on finish. If a task crashes without
     updating, the row stays 'running' and a watchdog can alert on stale runs.
 
-    `task_name` examples: 'mlb.fetch_daily_schedule', 'mlb.fetch_yesterday_boxscores'
-    `status`: 'running' | 'success' | 'failure' | 'partial'
-    `metadata`: arbitrary JSON — API response codes, date ranges fetched, game PKs, etc.
+    Attributes:
+        id: Surrogate primary key.
+        task_name: Namespaced Celery task name, e.g. ``"mlb.fetch_daily_schedule"``.
+        sport: Sport code the task targets (indexed, nullable).
+        source: Upstream data source identifier.
+        started_at: When the task started (tz-aware).
+        finished_at: When the task finished (tz-aware, null while running).
+        status: Run state (``"running"`` | ``"success"`` | ``"failure"`` | ``"partial"``).
+        records_inserted: Count of rows inserted by this run.
+        records_updated: Count of rows updated by this run.
+        records_skipped: Count of rows skipped (unchanged/duplicate).
+        error_message: Truncated error text if the run failed (nullable).
+        metadata_: Freeform JSON audit data (date ranges, game PKs, rate-limit
+            headers, etc.); maps to the ``metadata`` DB column.
     """
     __tablename__ = "ingestion_runs"
 

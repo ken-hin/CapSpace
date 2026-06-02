@@ -14,7 +14,24 @@ from app.models.base import Base, TimestampMixin
 
 
 class MlbPlayerProfile(Base, TimestampMixin):
-    """MLB-specific ID crosswalks and player metadata (1:1 with players)."""
+    """MLB-specific ID crosswalks and player metadata (1:1 with players).
+
+    Stores the cross-reference identifiers needed to join Statcast, FanGraphs, and
+    historical sources without polluting the core :class:`~app.models.player.Player`
+    table. The primary key doubles as the FK back to ``players`` to enforce 1:1.
+
+    Attributes:
+        player_id: PK and FK to the parent :class:`~app.models.player.Player`
+            (cascade delete).
+        mlb_player_id: Canonical MLBAM player id (indexed, unique).
+        bbref_id: Baseball Reference id (indexed, nullable).
+        fangraphs_id: FanGraphs id (indexed, nullable).
+        retrosheet_id: Retrosheet id for deep history (nullable).
+        mlb_service_time: MLB service time in years (e.g. ``5.142`` = 5y 142d).
+        player: Eager-loaded :class:`~app.models.player.Player` relationship.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
+    """
 
     __tablename__ = "mlb_player_profiles"
 

@@ -18,6 +18,30 @@ class Player(Base, TimestampMixin):
     Sport-agnostic record keyed externally by ``external_id``. Captures identity
     and bio data plus role attributes (position, handedness) used by downstream
     feature engineering. ``team_id`` is nullable to accommodate free agents.
+
+    Attributes:
+        id: Surrogate primary key.
+        external_id: Data provider's player identifier; unique, required.
+        team_id: FK to the player's current :class:`~app.models.team.Team`
+            (nullable for free agents).
+        team: Eager-loaded current :class:`~app.models.team.Team` relationship.
+        sport: Sport this player belongs to (indexed enum).
+        first_name: Given name.
+        last_name: Family name.
+        full_name: Display name (typically ``"first last"``).
+        birth_date: Date of birth.
+        birth_country: Country of birth.
+        height_inches: Height in inches.
+        weight_lbs: Weight in pounds.
+        position: Listed fielding position, e.g. ``"SS"`` or ``"SP"``.
+        primary_role: High-level role, e.g. ``"batter"`` or ``"pitcher"``.
+        jersey_number: Uniform number.
+        bats: Batting handedness, e.g. ``"L"``, ``"R"``, or ``"S"`` (switch).
+        throws: Throwing handedness, ``"L"`` or ``"R"``.
+        debut_date: MLB/professional debut date.
+        is_active: True if the player is currently active.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
     """
     __tablename__ = "players"
 

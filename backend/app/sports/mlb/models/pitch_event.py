@@ -25,8 +25,67 @@ from app.models.base import Base
 class PitchEvent(Base):
     """Single pitch from a Statcast-tracked MLB game.
 
-    Uses composite PK (id, pitch_time) because TimescaleDB requires the
-    partitioning column to be part of any unique index/primary key.
+    The lowest-grain MLB table — one row per pitch — and the foundation for arsenal
+    analysis, expected-stats computation, and matchup features. Stored as a
+    TimescaleDB hypertable; uses a composite PK (id, pitch_time) because TimescaleDB
+    requires the partitioning column to be part of any unique index/primary key.
+
+    Attributes:
+        id: Auto-incrementing id (part of composite PK with ``pitch_time``).
+        mlb_play_id: MLBAM play id for dedup and live-feed linking (indexed, nullable).
+        game_id: FK to the :class:`~app.models.game.Game`.
+        pitcher_id: FK to the pitching :class:`~app.models.player.Player`.
+        batter_id: FK to the batting :class:`~app.models.player.Player`.
+        inning: Inning number.
+        half_inning: Half of the inning (``"top"`` | ``"bottom"``).
+        at_bat_num: At-bat number within the game.
+        pitch_num: Pitch number within the at-bat.
+        balls: Ball count before the pitch.
+        strikes: Strike count before the pitch.
+        outs_when_up: Outs in the inning when the pitch was thrown.
+        pitcher_throws: Denormalized pitcher handedness (``"L"`` | ``"R"``).
+        batter_stands: Denormalized batter handedness (``"L"`` | ``"R"``).
+        pitch_type: Pitch classification code (``"FF"`` 4-seam, ``"SL"`` slider,
+            ``"CU"`` curve, ``"CH"`` change, ``"SI"`` sinker, ``"FC"`` cutter,
+            ``"KC"`` knuckle curve, ``"FS"`` splitter).
+        pitch_name: Human-readable pitch name.
+        release_speed_mph: Velocity at release, in mph.
+        effective_speed_mph: Perceived velocity adjusted for extension, in mph.
+        release_spin_rate: Spin rate at release, in rpm.
+        release_pos_x: Horizontal release position, in feet from plate center.
+        release_pos_y: Release distance from the plate, in feet.
+        release_pos_z: Vertical release height, in feet.
+        pfx_x: Horizontal movement, in inches of break.
+        pfx_z: Induced vertical movement, in inches of break.
+        plate_x: Horizontal plate-crossing location, in feet from center.
+        plate_z: Vertical plate-crossing location, in feet.
+        vx0: Initial x-velocity component, in ft/s.
+        vy0: Initial y-velocity component, in ft/s.
+        vz0: Initial z-velocity component, in ft/s.
+        ax: x-acceleration component, in ft/s^2.
+        ay: y-acceleration component, in ft/s^2.
+        az: z-acceleration component, in ft/s^2.
+        zone: Strike-zone number (1-9 in-zone, 11-14 chase quadrants).
+        description: Pitch-level result, e.g. ``"called_strike"``, ``"ball"``,
+            ``"swinging_strike"``, ``"hit_into_play"``.
+        events: Terminal at-bat event, if this pitch ended the PA (nullable).
+        launch_speed_mph: Batted-ball exit velocity, in mph (if in play).
+        launch_angle_deg: Batted-ball launch angle, in degrees (if in play).
+        hit_location: Fielder position the ball was hit to (if in play).
+        bb_type: Batted-ball type (``"ground_ball"`` | ``"fly_ball"`` |
+            ``"line_drive"`` | ``"popup"``).
+        hit_distance_ft: Estimated batted-ball distance, in feet.
+        estimated_ba: Statcast expected batting average (xBA).
+        estimated_slg: Statcast expected slugging (xSLG).
+        estimated_woba: Statcast expected wOBA (xwOBA).
+        woba_value: wOBA value credited to the outcome.
+        woba_denom: wOBA denominator for the PA.
+        babip_value: BABIP value for the outcome.
+        iso_value: Isolated-power value for the outcome.
+        pitch_time: Pitch timestamp and hypertable partition key (tz-aware).
+        game: Eager-loaded :class:`~app.models.game.Game` relationship.
+        pitcher: Eager-loaded pitching :class:`~app.models.player.Player` relationship.
+        batter: Eager-loaded batting :class:`~app.models.player.Player` relationship.
     """
 
     __tablename__ = "pitch_events"

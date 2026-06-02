@@ -19,7 +19,28 @@ from app.models.base import Base
 
 
 class GameLineup(Base):
-    """Single lineup slot for an MLB game (one row per batter per team)."""
+    """Single lineup slot for an MLB game (one row per batter per team).
+
+    Drives pre-game modeling features such as lineup-level OPS, handedness matchups
+    versus the opposing starter, and lineup-protection effects. Starters carry
+    ``is_starter=True``; pinch-hitters and defensive replacements are inserted with
+    ``is_starter=False``. The unique constraint enforces one row per
+    (game, team, batting_order, is_starter).
+
+    Attributes:
+        id: Surrogate primary key.
+        game_id: FK to the :class:`~app.models.game.Game`.
+        team_id: FK to the batting :class:`~app.models.team.Team`.
+        player_id: FK to the :class:`~app.models.player.Player` in this slot.
+        batting_order: Batting order position (1-9).
+        position: Fielding position for this game (``"C"`` | ``"1B"`` | ``"2B"`` |
+            ``"3B"`` | ``"SS"`` | ``"LF"`` | ``"CF"`` | ``"RF"`` | ``"DH"`` | ``"P"``).
+        is_starter: True if the player started the game in this slot.
+        set_at: When the lineup was confirmed/announced (server default ``now()``).
+        game: Eager-loaded :class:`~app.models.game.Game` relationship.
+        team: Eager-loaded :class:`~app.models.team.Team` relationship.
+        player: Eager-loaded :class:`~app.models.player.Player` relationship.
+    """
 
     __tablename__ = "game_lineups"
     __table_args__ = (

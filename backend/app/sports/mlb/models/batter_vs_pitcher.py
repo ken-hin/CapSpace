@@ -18,7 +18,33 @@ from app.models.base import Base, TimestampMixin
 
 
 class BatterVsPitcher(Base, TimestampMixin):
-    """Career head-to-head stats between a batter and pitcher."""
+    """Career head-to-head stats between a batter and pitcher.
+
+    One row per unique (batter, pitcher) pair holding cumulative career matchup
+    totals, refreshed after each game the two face each other. Useful as a feature
+    input once the sample is large enough (~20+ PA). The unique constraint enforces
+    one row per (batter, pitcher).
+
+    Attributes:
+        id: Surrogate primary key.
+        batter_id: FK to the batting :class:`~app.models.player.Player`.
+        pitcher_id: FK to the pitching :class:`~app.models.player.Player`.
+        pa: Career plate appearances in this matchup.
+        ab: Career at-bats in this matchup.
+        hits: Career hits.
+        home_runs: Career home runs.
+        strikeouts: Career strikeouts.
+        walks: Career walks.
+        avg: Batting average (derived from counting stats; nullable).
+        obp: On-base percentage (nullable).
+        slg: Slugging percentage (nullable).
+        xwoba: Statcast expected wOBA (requires enough batted-ball events; nullable).
+        last_faced_date: Date the two most recently faced each other (nullable).
+        batter: Eager-loaded batting :class:`~app.models.player.Player` relationship.
+        pitcher: Eager-loaded pitching :class:`~app.models.player.Player` relationship.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
+    """
 
     __tablename__ = "batter_vs_pitcher"
     __table_args__ = (

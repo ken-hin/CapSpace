@@ -17,6 +17,27 @@ class Venue(Base, TimestampMixin):
     Stores location (city/state/country, lat/long, elevation, timezone) and
     physical attributes (capacity, surface, roof type) that matter for weather
     and park-factor modeling. Linked back to the home :class:`~app.models.team.Team`.
+
+    Attributes:
+        id: Surrogate primary key.
+        external_id: Data provider's venue identifier; unique, nullable.
+        sport: Sport this venue is primarily used for (indexed enum).
+        name: Venue name; unique.
+        city: City the venue is located in.
+        state: State/province code (nullable).
+        country: Country; defaults to ``"USA"``.
+        capacity: Seating capacity.
+        surface: Playing surface (``"grass"`` | ``"turf"`` | ``"hybrid"`` |
+            ``"hardwood"`` | ``"ice"`` | ``"clay"``).
+        roof_type: Roof configuration (``"open"`` | ``"fixed"`` | ``"retractable"``).
+        elevation_ft: Elevation above sea level, in feet (affects ball flight).
+        timezone: IANA timezone name; defaults to ``"America/New_York"``.
+        latitude: Geographic latitude (used for weather lookups).
+        longitude: Geographic longitude (used for weather lookups).
+        is_active: True if the venue is currently in use.
+        team: Eager-loaded home :class:`~app.models.team.Team` relationship.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
     """
     __tablename__ = "venues"
 
