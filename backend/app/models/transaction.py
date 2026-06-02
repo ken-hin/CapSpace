@@ -17,6 +17,19 @@ class Transaction(Base):
     Links the affected :class:`~app.models.player.Player` and the
     ``from``/``to`` :class:`~app.models.team.Team` (either may be null, e.g. for
     a free-agent signing) with the date and provider-supplied details.
+
+    Attributes:
+        id: Surrogate primary key.
+        player_id: FK to the affected :class:`~app.models.player.Player`.
+        transaction_type: Move type (``"trade"`` | ``"callup"`` | ``"designation"`` |
+            ``"release"`` | ``"sign"`` | ``"option"`` | ``"recall"``).
+        from_team_id: FK to the originating :class:`~app.models.team.Team` (nullable).
+        to_team_id: FK to the destination :class:`~app.models.team.Team` (nullable).
+        transaction_date: Effective date of the move.
+        details: Arbitrary provider payload (notes, conditions, contract terms).
+        player: Eager-loaded :class:`~app.models.player.Player` relationship.
+        from_team: Eager-loaded originating :class:`~app.models.team.Team` relationship.
+        to_team: Eager-loaded destination :class:`~app.models.team.Team` relationship.
     """
     __tablename__ = "transactions"
 

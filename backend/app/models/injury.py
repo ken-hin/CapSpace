@@ -17,6 +17,18 @@ class Injury(Base):
     Each row captures a status (e.g. ``IL15``, ``DTD``, ``ACTIVE``), optional
     reason and date range, and an ``is_current`` flag marking the active status,
     linked to the affected :class:`~app.models.player.Player`.
+
+    Attributes:
+        id: Surrogate primary key.
+        player_id: FK to the affected :class:`~app.models.player.Player`.
+        status: Sport-specific status string (MLB: ``"IL10"`` | ``"IL15"`` |
+            ``"IL60"`` | ``"DTD"`` | ``"OUT"`` | ``"PROBABLE"`` | ``"ACTIVE"``).
+        reason: Free-text injury description (nullable).
+        started_at: Date the status took effect (nullable).
+        expected_return: Estimated return date (nullable).
+        is_current: True if this is the player's active status row.
+        updated_at: When this row was last updated (tz-aware).
+        player: Eager-loaded :class:`~app.models.player.Player` relationship.
     """
     __tablename__ = "injuries"
     __table_args__ = (

@@ -18,7 +18,38 @@ from app.models.base import Base, TimestampMixin
 
 
 class MlbStandings(Base, TimestampMixin):
-    """MLB standings snapshot for a single team on a single date."""
+    """MLB standings snapshot for a single team on a single date.
+
+    One row per (team, as_of_date) giving a full time-series of how each team's
+    record evolved through the season. Feeds recent-form features (last-10 record,
+    streak) and Pythagorean over/under-performance signals. The unique constraint
+    enforces one row per (team, as_of_date).
+
+    Attributes:
+        id: Surrogate primary key.
+        team_id: FK to the :class:`~app.models.team.Team`.
+        season: Season year.
+        as_of_date: Date this standings snapshot represents.
+        wins: Wins as of the date.
+        losses: Losses as of the date.
+        win_pct: Winning percentage.
+        runs_scored: Runs scored season-to-date.
+        runs_allowed: Runs allowed season-to-date.
+        run_diff: Run differential (``runs_scored - runs_allowed``).
+        pythag_win_pct: Pythagorean expected win pct (Bill James formula);
+            gap vs ``win_pct`` flags over/under-performance.
+        games_back: Games behind the division leader.
+        division_rank: Rank within the division.
+        league_rank: Rank within the league.
+        wildcard_rank: Wild-card standing position (nullable).
+        last_10_wins: Wins in the last 10 games.
+        last_10_losses: Losses in the last 10 games.
+        streak_type: Current streak direction (``"W"`` | ``"L"``).
+        streak_count: Length of the current streak.
+        team: Eager-loaded :class:`~app.models.team.Team` relationship.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
+    """
 
     __tablename__ = "mlb_standings"
     __table_args__ = (

@@ -14,7 +14,38 @@ from app.models.base import Base, TimestampMixin
 
 
 class MlbGameDetails(Base, TimestampMixin):
-    """MLB-specific extension of the games table (1:1 relationship)."""
+    """MLB-specific extension of the games table (1:1 relationship).
+
+    Holds MLB-only game fields keyed on ``game_id`` so the cross-sport
+    :class:`~app.models.game.Game` table stays free of nullable MLB columns. The
+    primary key doubles as the FK back to ``games`` to enforce 1:1 cardinality.
+
+    Attributes:
+        game_id: PK and FK to the parent :class:`~app.models.game.Game`
+            (cascade delete).
+        mlb_game_pk: Official MLBAM gamePk; the canonical cross-system identifier.
+        game_type: Game type code (``"R"`` regular, ``"P"`` postseason, ``"F"`` final,
+            ``"D"`` division series, ``"L"`` league championship, ``"W"`` World Series,
+            ``"S"`` spring training).
+        home_starter_id: FK to the home starting pitcher (nullable for TBD).
+        away_starter_id: FK to the away starting pitcher (nullable for TBD).
+        winning_pitcher_id: FK to the winning pitcher (populated post-game).
+        losing_pitcher_id: FK to the losing pitcher (populated post-game).
+        save_pitcher_id: FK to the pitcher credited with the save (nullable).
+        total_innings: Innings played (9 by default; more for extra innings).
+        home_runs_by_inning: JSON array of home runs scored per inning.
+        away_runs_by_inning: JSON array of away runs scored per inning.
+        is_doubleheader: True if this game is part of a doubleheader.
+        doubleheader_game_num: Which game of the doubleheader (1 or 2; nullable).
+        game: Eager-loaded :class:`~app.models.game.Game` relationship.
+        home_starter: Eager-loaded home starting :class:`~app.models.player.Player`.
+        away_starter: Eager-loaded away starting :class:`~app.models.player.Player`.
+        winning_pitcher: Eager-loaded winning :class:`~app.models.player.Player`.
+        losing_pitcher: Eager-loaded losing :class:`~app.models.player.Player`.
+        save_pitcher: Eager-loaded save :class:`~app.models.player.Player`.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
+    """
 
     __tablename__ = "mlb_game_details"
 

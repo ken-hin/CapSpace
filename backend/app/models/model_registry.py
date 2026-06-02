@@ -13,15 +13,31 @@ from app.models.base import Base
 
 
 class ModelRegistry(Base):
-    """
-    Tracks every trained model version deployed to or considered for production.
+    """Tracks every trained model version deployed to or considered for production.
 
-    Pairs with MLflow: `mlflow_run_id` links to the artifact store for weights and
+    Pairs with MLflow: ``mlflow_run_id`` links to the artifact store for weights and
     full metric history. This table is the source of truth for the prediction service
     when selecting which model is active for a given sport/target.
 
     Only one row per (name, version) is allowed — bump version on any retraining.
-    `is_active` should be True for at most one row per (sport, target) at any time.
+    ``is_active`` should be True for at most one row per (sport, target) at any time.
+
+    Attributes:
+        id: Surrogate primary key.
+        name: Human-readable model identifier, e.g. ``"mlb_run_total_v1"``.
+        sport: Sport code the model serves (indexed).
+        version: Semver or short hash, e.g. ``"1.0.0"`` or ``"abc1234"``.
+        model_type: Algorithm family (``"xgboost"`` | ``"lightgbm"`` |
+            ``"logistic"`` | ``"pytorch"``).
+        target: Prediction target, e.g. ``"win_prob"``, ``"run_total"``,
+            ``"k_total"``, ``"nrfi_prob"``, ``"player_hits_over"``.
+        trained_at: When training completed (tz-aware).
+        training_window_start: First date of training data.
+        training_window_end: Last date of training data.
+        mlflow_run_id: MLflow run id linking to weights/metrics/artifacts (nullable).
+        hyperparams: JSON dict of hyperparameters used for this run.
+        metrics: JSON dict of eval metrics (log_loss, brier_score, roc_auc, mae, rmse).
+        is_active: True if this model currently serves predictions for its sport/target.
     """
     __tablename__ = "model_registry"
     __table_args__ = (

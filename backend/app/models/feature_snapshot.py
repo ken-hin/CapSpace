@@ -13,16 +13,23 @@ from app.models.base import Base
 
 
 class FeatureSnapshot(Base):
-    """
-    Pre-computed ML feature vector for a (game, side) pair at a specific feature version.
+    """Pre-computed ML feature vector for a (game, side) pair at a specific feature version.
 
     Written by the ML pipeline's feature_builder after each morning data refresh, and
     read by the prediction service to avoid recomputing features at serve time. The
     unique constraint ensures exactly one vector per (game, side, version) — the writer
     should upsert on conflict.
 
-    `side` is one of: 'home' | 'away' | 'matchup'
-    `feature_version` examples: 'mlb_v1' | 'mlb_v2_with_arsenal'
+    Attributes:
+        id: Surrogate primary key.
+        game_id: FK to the :class:`~app.models.game.Game` the features describe.
+        sport: Sport code (indexed).
+        side: Perspective of the vector (``"home"`` | ``"away"`` | ``"matchup"``).
+        feature_version: Feature-set version tag; bump whenever the feature set
+            changes materially (e.g. ``"mlb_v1"``, ``"mlb_v2_with_arsenal"``).
+        features: Flat JSON dict of ``feature_name -> value`` (numeric values).
+        computed_at: When the vector was computed (tz-aware).
+        game: Eager-loaded :class:`~app.models.game.Game` relationship.
     """
     __tablename__ = "feature_snapshots"
     __table_args__ = (

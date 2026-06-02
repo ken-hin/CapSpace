@@ -13,14 +13,33 @@ from app.models.base import Base
 
 
 class BookOdds(Base):
-    """
-    Time-series odds snapshots from sportsbooks.
+    """Time-series odds snapshots from sportsbooks.
 
     One row per (game, book, market, side, captured_at) pull. Retains full line-movement
     history so closing-line value and sharp-money signals can be computed.
 
-    TimescaleDB hypertable on `captured_at`. Uses composite PK (id, captured_at) because
-    TimescaleDB requires the partitioning column in any unique index/PK.
+    TimescaleDB hypertable on ``captured_at``. Uses composite PK (id, captured_at)
+    because TimescaleDB requires the partitioning column in any unique index/PK.
+
+    Attributes:
+        id: Auto-incrementing id (part of composite PK with ``captured_at``).
+        game_id: FK to the :class:`~app.models.game.Game`.
+        player_id: FK to a :class:`~app.models.player.Player`; null for game lines,
+            set for player props.
+        sport: Sport code (indexed).
+        book: Sportsbook identifier (``"draftkings"`` | ``"fanduel"`` | ``"betmgm"`` |
+            ``"caesars"`` | ``"pinnacle"``).
+        market: Market key, e.g. ``"h2h"``, ``"spread"``, ``"totals"``,
+            ``"player_strikeouts"``, ``"nrfi"``.
+        period: Game period the line covers (``"full_game"`` | ``"h1"`` |
+            ``"1st_5_innings"`` | ``"1st_inning"``); nullable.
+        side: Side of the market (``"home"`` | ``"away"`` | ``"over"`` | ``"under"``).
+        line: Point/total line (null for moneylines).
+        american_price: Quoted American odds.
+        decimal_price: Quoted decimal odds.
+        implied_prob: Vig-inclusive implied probability derived from ``decimal_price``.
+        captured_at: Snapshot time and hypertable partition key (tz-aware UTC).
+        source: Data source identifier, e.g. ``"the_odds_api"``.
     """
     __tablename__ = "book_odds"
     __table_args__ = (

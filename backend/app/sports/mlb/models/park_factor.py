@@ -18,7 +18,36 @@ from app.models.base import Base
 
 
 class ParkFactor(Base):
-    """MLB park factor data per venue per season."""
+    """MLB park factor data per venue per season.
+
+    Park factors (100 = league average) shift year-to-year with construction
+    changes, humidor installs, and environmental drift, so they are keyed by
+    (venue, season). Also stores outfield dimensions that influence batted-ball
+    outcomes. The unique constraint enforces one row per (venue, season).
+
+    Attributes:
+        id: Surrogate primary key.
+        venue_id: FK to the :class:`~app.models.venue.Venue`.
+        season: Season year these factors apply to.
+        lf_distance_ft: Left-field fence distance, in feet.
+        cf_distance_ft: Center-field fence distance, in feet.
+        rf_distance_ft: Right-field fence distance, in feet.
+        lf_wall_height_ft: Left-field wall height, in feet.
+        rf_wall_height_ft: Right-field wall height, in feet.
+        factor_runs: Overall run park factor (100 = average).
+        factor_hr_vs_l: Home-run factor vs left-handed batters.
+        factor_hr_vs_r: Home-run factor vs right-handed batters.
+        factor_hits: Hits park factor.
+        factor_singles: Singles park factor.
+        factor_doubles: Doubles park factor.
+        factor_triples: Triples park factor.
+        factor_bb: Walk park factor.
+        factor_so: Strikeout park factor.
+        source: Data provenance (``"fangraphs"`` | ``"baseball_savant"`` |
+            ``"computed"``).
+        updated_at: Last refresh timestamp (server default ``now()``).
+        venue: Eager-loaded :class:`~app.models.venue.Venue` relationship.
+    """
 
     __tablename__ = "park_factors"
     __table_args__ = (

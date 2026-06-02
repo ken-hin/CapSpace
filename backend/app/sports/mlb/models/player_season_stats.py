@@ -19,7 +19,34 @@ from app.models.base import Base
 
 
 class MlbPlayerSeasonStats(Base):
-    """Full-season stat line for an MLB player (one row per player/season/role)."""
+    """Full-season stat line for an MLB player (one row per player/season/role).
+
+    Cached aggregate refreshed daily from the MLB Stats API and Statcast. Carries
+    the full batter and pitcher column set; the ``role`` column selects which group
+    is populated, so two-way players (e.g. Ohtani) get one row per role. The unique
+    constraint enforces one row per (player, season, role).
+
+    The statistical columns are grouped and documented inline below under banner
+    comments; only the identity/metadata columns are summarized here.
+
+    Attributes:
+        id: Surrogate primary key.
+        player_id: FK to the :class:`~app.models.player.Player`.
+        season: Season year.
+        team_id: FK to the last :class:`~app.models.team.Team` the player was on
+            that season (nullable).
+        role: Stat group populated (``"batter"`` | ``"pitcher"``).
+        updated_at: Last refresh timestamp (server default ``now()``).
+        source: Data source identifier; defaults to ``"mlb_stats_api"``.
+        player: Eager-loaded :class:`~app.models.player.Player` relationship.
+        team: Eager-loaded :class:`~app.models.team.Team` relationship.
+
+    Note:
+        Batter columns (counting, rate, sabermetric, Statcast) and pitcher columns
+        (counting, rate, Statcast) are defined and documented inline. Some columns
+        (e.g. ``walks``, ``strikeouts``, ``babip``, ``hr_per_fb``) are shared across
+        roles and reused rather than duplicated.
+    """
 
     __tablename__ = "mlb_player_season_stats"
     __table_args__ = (

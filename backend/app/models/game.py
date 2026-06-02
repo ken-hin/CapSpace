@@ -19,6 +19,38 @@ class Game(Base, TimestampMixin):
     all reference. Tracks the home/away teams and venue, scheduling fields, the
     live/final result, season metadata, and a flattened set of weather columns
     describing conditions at first pitch / tip-off.
+
+    Attributes:
+        id: Surrogate primary key.
+        external_id: Data provider's game identifier; unique, nullable.
+        sport: Sport this game belongs to (indexed enum).
+        home_team_id: FK to the home :class:`~app.models.team.Team`.
+        away_team_id: FK to the away :class:`~app.models.team.Team`.
+        venue_id: FK to the :class:`~app.models.venue.Venue` (nullable for TBD sites).
+        scheduled_at: Scheduled first-pitch / tip-off time (tz-aware).
+        game_date: Local calendar date of the game.
+        start_time_actual: Actual start time once the game begins (tz-aware).
+        end_time: Actual end time once the game finishes (tz-aware).
+        duration_minutes: Elapsed game length in minutes.
+        status: Lifecycle state, e.g. ``"scheduled"``, ``"in_progress"``, ``"final"``.
+        home_score: Home team's run/point total (0 until played).
+        away_score: Away team's run/point total (0 until played).
+        attendance: Reported attendance, if available.
+        season: Season label, e.g. ``"2026"``.
+        is_postseason: True if this is a playoff/postseason game.
+        weather_temp_f: Air temperature at game time, in Fahrenheit.
+        weather_wind_mph: Wind speed at game time, in mph.
+        weather_wind_dir_deg: Wind direction in compass degrees (0=N, 90=E).
+        weather_wind_dir_text: Semantic wind direction relative to the field
+            (``"in"`` | ``"out"`` | ``"L-R"`` | ``"R-L"`` | ``"cross"``).
+        weather_condition: Sky/precip condition (``"clear"`` | ``"cloudy"`` |
+            ``"rain"`` | ``"dome"``).
+        weather_humidity_pct: Relative humidity at game time, as a percentage.
+        home_team: Eager-loaded home :class:`~app.models.team.Team` relationship.
+        away_team: Eager-loaded away :class:`~app.models.team.Team` relationship.
+        venue: Eager-loaded :class:`~app.models.venue.Venue` relationship.
+        created_at: Row creation timestamp (from :class:`TimestampMixin`).
+        updated_at: Last update timestamp (from :class:`TimestampMixin`).
     """
     __tablename__ = "games"
 

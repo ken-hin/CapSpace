@@ -16,7 +16,33 @@ from app.models.base import Base
 
 
 class AtBat(Base):
-    """Single plate appearance in an MLB game."""
+    """Single plate appearance in an MLB game.
+
+    Denormalized at-bat-level rollup sitting between game-level stats and the
+    pitch-by-pitch :class:`~app.sports.mlb.models.pitch_event.PitchEvent` firehose.
+    The unique constraint enforces one row per (game, at_bat_num).
+
+    Attributes:
+        id: Surrogate primary key.
+        game_id: FK to the :class:`~app.models.game.Game`.
+        inning: Inning number the PA occurred in.
+        half_inning: Half of the inning (``"top"`` | ``"bottom"``).
+        at_bat_num: Sequential at-bat number within the game (1-based).
+        pitcher_id: FK to the pitching :class:`~app.models.player.Player`.
+        batter_id: FK to the batting :class:`~app.models.player.Player`.
+        pitcher_throws: Denormalized pitcher handedness (``"L"`` | ``"R"``).
+        batter_stands: Denormalized batter handedness (``"L"`` | ``"R"``).
+        result: Terminal PA outcome, e.g. ``"single"``, ``"home_run"``, ``"walk"``,
+            ``"strikeout"``, ``"field_out"``, ``"sac_fly"``, ``"hit_by_pitch"``.
+        rbi: Runs batted in on the PA.
+        runs_scored: Runs that scored during the PA.
+        pitch_count: Number of pitches seen in the PA.
+        started_at: Start time of the PA (tz-aware).
+        ended_at: End time of the PA (tz-aware).
+        game: Eager-loaded :class:`~app.models.game.Game` relationship.
+        pitcher: Eager-loaded pitching :class:`~app.models.player.Player` relationship.
+        batter: Eager-loaded batting :class:`~app.models.player.Player` relationship.
+    """
 
     __tablename__ = "at_bats"
     __table_args__ = (

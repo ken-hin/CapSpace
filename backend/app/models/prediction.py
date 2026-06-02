@@ -19,6 +19,30 @@ class Prediction(Base):
     that produced it and records the market/side/line being predicted, the
     probability outputs, and edge/value metrics versus the book's implied
     probability. Some legacy columns are retained for backward compatibility.
+
+    Attributes:
+        id: Surrogate primary key.
+        game_id: FK to the predicted :class:`~app.models.game.Game`.
+        model_id: FK to the :class:`~app.models.model_registry.ModelRegistry`
+            row that produced this prediction (nullable).
+        market: Market/target being predicted, e.g. ``"h2h"``, ``"totals"``,
+            ``"player_strikeouts"``, ``"nrfi"``.
+        side: Side of the market, e.g. ``"home"``, ``"away"``, ``"over"``, ``"under"``.
+        line: Point/total line the prediction is made against (nullable for moneylines).
+        prediction_type: Legacy free-text prediction category (required).
+        predicted_value: Legacy primary numeric output of the model.
+        confidence: Legacy confidence score for ``predicted_value``.
+        model_version: Version string of the model that produced this row.
+        features_used: JSON snapshot of the feature inputs (nullable).
+        predicted_prob: Model's probability for ``side`` clearing the line.
+        predicted_distribution: JSON distributional forecast (e.g. run-total pmf).
+        book_implied_prob: Vig-adjusted probability implied by the book's price.
+        edge_pct: Model edge over the book, as a percentage.
+        expected_value: Expected value per unit staked.
+        recommended_stake_pct: Suggested stake as a fraction of bankroll (e.g. Kelly).
+        generated_at: When the prediction was produced (server default ``now()``).
+        expires_at: When the prediction goes stale / should not be acted on.
+        model: Eager-loaded :class:`~app.models.model_registry.ModelRegistry` relationship.
     """
     __tablename__ = "predictions"
 

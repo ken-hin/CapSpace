@@ -14,8 +14,21 @@ from app.models.base import Base
 class StatEvent(Base):
     """Time-series stat event stored in a TimescaleDB hypertable.
 
-    Uses a composite PK of (id, occurred_at) because TimescaleDB requires
-    the partitioning column to be part of any unique index/PK.
+    Generic, sport-agnostic log of individual scoring/stat occurrences (one row
+    per event) that the ``/stats`` aggregation endpoints query. Uses a composite
+    PK of (id, occurred_at) because TimescaleDB requires the partitioning column
+    to be part of any unique index/PK.
+
+    Attributes:
+        id: Auto-incrementing id (part of composite PK with ``occurred_at``).
+        game_id: FK to the :class:`~app.models.game.Game` the event occurred in.
+        player_id: FK to the :class:`~app.models.player.Player` involved (nullable).
+        team_id: FK to the :class:`~app.models.team.Team` credited with the event.
+        event_type: Sport-specific event label, e.g. ``"hit"`` or ``"strikeout"``.
+        value: Numeric magnitude of the event (defaults to ``1.0`` for counts).
+        occurred_at: Event time and hypertable partition key (tz-aware).
+        period: Period/inning the event happened in (nullable).
+        details: Arbitrary JSON payload with event-specific context (nullable).
     """
     __tablename__ = "stat_events"
     __table_args__ = (

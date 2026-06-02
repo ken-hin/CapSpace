@@ -18,7 +18,29 @@ from app.models.base import Base
 
 
 class BullpenAvailability(Base):
-    """Reliever workload and availability status for a specific game."""
+    """Reliever workload and availability status for a specific game.
+
+    One row per (game, reliever), refreshed during pre-game prep. Recent-workload
+    signals here feed late-game and totals modeling — an exhausted bullpen is more
+    likely to surrender runs in innings 6-9. The unique constraint enforces one row
+    per (game, player).
+
+    Attributes:
+        id: Surrogate primary key.
+        game_id: FK to the :class:`~app.models.game.Game`.
+        team_id: FK to the reliever's :class:`~app.models.team.Team`.
+        player_id: FK to the reliever :class:`~app.models.player.Player`.
+        pitches_yesterday: Pitches thrown 1 day before the game (0 if none).
+        pitches_2days_ago: Pitches thrown 2 days before the game.
+        pitches_3days_ago: Pitches thrown 3 days before the game.
+        appearances_last_7d: Number of appearances in the prior 7 days.
+        is_back_to_back: True if the reliever pitched the previous day.
+        is_available: True if the reliever is expected to be available.
+        updated_at: Last refresh timestamp (server default ``now()``).
+        game: Eager-loaded :class:`~app.models.game.Game` relationship.
+        team: Eager-loaded :class:`~app.models.team.Team` relationship.
+        player: Eager-loaded reliever :class:`~app.models.player.Player` relationship.
+    """
 
     __tablename__ = "bullpen_availability"
     __table_args__ = (
