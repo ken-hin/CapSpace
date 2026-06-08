@@ -15,6 +15,7 @@ from app.sports.mlb.models.mlb_player_profile import MlbPlayerProfile  # noqa: F
 
 # Venue-dependent
 from app.sports.mlb.models.park_factor import ParkFactor  # noqa: F401
+from app.sports.mlb.models.park_dimensions import ParkDimensions  # noqa: F401
 
 # Game-dependent
 from app.sports.mlb.models.game_lineup import GameLineup  # noqa: F401
@@ -37,6 +38,7 @@ __all__ = [
     "MlbPlayerProfile",
     # Venue
     "ParkFactor",
+    "ParkDimensions",
     # Game-level
     "GameLineup",
     "PitchEvent",
