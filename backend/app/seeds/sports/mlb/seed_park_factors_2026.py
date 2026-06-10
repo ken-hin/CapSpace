@@ -83,46 +83,286 @@ def _pf(*, source: str = "baseball_savant", **values) -> dict:
 PARK_FACTORS: dict[int, dict] = {
 
     # ── American League East ──────────────────────────────────────────────
-    3313: _pf(),   # Yankee Stadium — NYY
-    3:    _pf(),   # Fenway Park — BOS
-    2:    _pf(),   # Oriole Park at Camden Yards — BAL
-    14:   _pf(),   # Rogers Centre — TOR
-    12:   _pf(),   # Tropicana Field — TB
+		# Yankee Stadium — NYY
+    3313: _pf(
+	    factor_overall=101,   factor_runs=106,
+	    factor_hr_vs_l=113,   factor_hr_vs_r=121,
+	    factor_hits=95,       factor_xwobacon=103,
+	    factor_obp=101,       factor_hardhit=106,
+	    factor_bb=117,        factor_so=102,
+	    pa=46751,
+    ),
+		# Fenway Park — BOS
+    3:    _pf(
+	    factor_overall=102,   factor_runs=104,
+	    factor_hr_vs_l=81,    factor_hr_vs_r=87,
+	    factor_hits=104,      factor_xwobacon=99,
+	    factor_obp=104,       factor_hardhit=100,
+	    factor_bb=98,         factor_so=98,
+	    pa=44597,
+    ),
+		# Oriole Park at Camden Yards — BAL
+    2:    _pf(
+	    factor_overall=103,   factor_runs=106,
+	    factor_hr_vs_l=123,   factor_hr_vs_r=97,
+	    factor_hits=105,      factor_xwobacon=102,
+	    factor_obp=101,       factor_hardhit=104,
+	    factor_bb=93,         factor_so=99,
+	    pa=45371,
+    ),
+		# Rogers Centre — TOR
+    14:   _pf(
+	    factor_overall=101,   factor_runs=102,
+	    factor_hr_vs_l=107,   factor_hr_vs_r=111,
+	    factor_hits=102,      factor_xwobacon=101,
+	    factor_obp=100,       factor_hardhit=100,
+	    factor_bb=98,         factor_so=97,
+	    pa=46116,
+    ),
+		# Tropicana Field — TB
+    12:   _pf(
+	    factor_overall=97,    factor_runs=94,
+	    factor_hr_vs_l=84,    factor_hr_vs_r=112,
+	    factor_hits=97,       factor_xwobacon=99,
+	    factor_obp=97,        factor_hardhit=92,
+	    factor_bb=97,         factor_so=102,
+	    pa=25129,
+    ),
 
     # ── American League Central ───────────────────────────────────────────
-    5:    _pf(),   # Progressive Field — CLE
-    2394: _pf(),   # Comerica Park — DET
-    7:    _pf(),   # Kauffman Stadium — KC
-    3312: _pf(),   # Target Field — MIN
-    4:    _pf(),   # Rate Field — CWS
+		# Progressive Field — CLE
+    5:    _pf(
+      factor_overall=98,    factor_runs=96,
+	    factor_hr_vs_l=103,   factor_hr_vs_r=83,
+	    factor_hits=98,       factor_xwobacon=99,
+	    factor_obp=99,        factor_hardhit=97,
+	    factor_bb=102,        factor_so=105,
+	    pa=43703,
+    ),
+		# Comerica Park — DET
+    2394: _pf(
+      factor_overall=100,   factor_runs=100,
+	    factor_hr_vs_l=99,    factor_hr_vs_r=103,
+	    factor_hits=100,      factor_xwobacon=98,
+	    factor_obp=100,       factor_hardhit=98,
+	    factor_bb=99,         factor_so=99,
+	    pa=43338,
+    ),
+		# Kauffman Stadium — KC
+    7:    _pf(
+      factor_overall=100,   factor_runs=100,
+	    factor_hr_vs_l=75,    factor_hr_vs_r=89,
+	    factor_hits=103,      factor_xwobacon=101,
+	    factor_obp=101,       factor_hardhit=104,
+	    factor_bb=99,         factor_so=91,
+	    pa=43242,
+    ),
+		# Target Field — MIN
+    3312: _pf(
+      factor_overall=103,   factor_runs=96,
+	    factor_hr_vs_l=96,    factor_hr_vs_r=97,
+	    factor_hits=104,      factor_xwobacon=100,
+	    factor_obp=104,       factor_hardhit=99,
+	    factor_bb=99,         factor_so=97,
+	    pa=44997,
+    ),
+		# Rate Field — CWS
+    4:    _pf(
+      factor_overall=99,    factor_runs=98,
+	    factor_hr_vs_l=105,   factor_hr_vs_r=90,
+	    factor_hits=97,       factor_xwobacon=98,
+	    factor_obp=99,        factor_hardhit=97,
+	    factor_bb=103,        factor_so=97,
+	    pa=44300,
+    ),
 
     # ── American League West ──────────────────────────────────────────────
-    2392: _pf(),   # Daikin Park — HOU
-    1:    _pf(),   # Angel Stadium — LAA
-    680:  _pf(),   # T-Mobile Park — SEA
-    5325: _pf(),   # Globe Life Field — TEX
-    2529: _pf(),   # Sutter Health Park — ATH (new park; may need window_years=1)
+    # Daikin Park — HOU
+    2392: _pf(
+      factor_overall=101,   factor_runs=102,
+	    factor_hr_vs_l= 123,  factor_hr_vs_r=111,
+	    factor_hits=100,      factor_xwobacon=99,
+	    factor_obp=100,       factor_hardhit=99,
+	    factor_bb=102,        factor_so=106,
+	    pa=43847,
+    ),
+    # Angel Stadium — LAA
+    1:    _pf(
+      factor_overall=101,   factor_runs=102,
+	    factor_hr_vs_l=98,    factor_hr_vs_r=113,
+	    factor_hits=99,       factor_xwobacon=99,
+	    factor_obp=100,       factor_hardhit=99,
+	    factor_bb=100,        factor_so=105,
+	    pa=43428,
+    ),
+    # T-Mobile Park — SEA
+    680:  _pf(
+      factor_overall=92,    factor_runs=85,
+	    factor_hr_vs_l=97,    factor_hr_vs_r=98,
+	    factor_hits=90,       factor_xwobacon=101,
+	    factor_obp=92,        factor_hardhit=99,
+	    factor_bb=95,         factor_so=117,
+	    pa=43896,
+    ),
+    # Globe Life Field — TEX
+    5325: _pf(
+      factor_overall=92,    factor_runs=85,
+	    factor_hr_vs_l=95,    factor_hr_vs_r=87,
+	    factor_hits=92,       factor_xwobacon=98,
+	    factor_obp=93,        factor_hardhit=100,
+	    factor_bb=95,         factor_so=102,
+	    pa=43159,
+    ),
+    # Sutter Health Park — ATH (new park; may need window_years=1)
+    2529: _pf(
+      factor_overall=0,   factor_runs=0,
+	    factor_hr_vs_l=0,   factor_hr_vs_r=0,
+	    factor_hits=0,      factor_xwobacon=0,
+	    factor_obp=0,       factor_hardhit=0,
+	    factor_bb=0,        factor_so=0,
+	    pa=0,
+    ),
 
     # ── National League East ──────────────────────────────────────────────
-    3289: _pf(),   # Citi Field — NYM
-    2681: _pf(),   # Citizens Bank Park — PHI
-    4705: _pf(),   # Truist Park — ATL
-    3309: _pf(),   # Nationals Park — WSH
-    4169: _pf(),   # loanDepot park — MIA
+    # Citi Field — NYM
+    3289: _pf(
+      factor_overall=99,    factor_runs=98,
+	    factor_hr_vs_l=96,    factor_hr_vs_r=107,
+	    factor_hits=96,       factor_xwobacon=101,
+	    factor_obp=100,       factor_hardhit=102,
+	    factor_bb=108,        factor_so=103,
+	    pa=45758,
+    ),
+    # Citizens Bank Park — PHI
+    2681: _pf(
+      factor_overall=102,   factor_runs=104,
+	    factor_hr_vs_l=130,   factor_hr_vs_r=100,
+	    factor_hits=102,      factor_xwobacon=98,
+	    factor_obp=100,       factor_hardhit=99,
+	    factor_bb=96,         factor_so=103,
+	    pa=44713,
+    ),
+    # Truist Park — ATL
+    4705: _pf(
+      factor_overall=99,    factor_runs=98,
+	    factor_hr_vs_l=97,    factor_hr_vs_r=91,
+	    factor_hits=101,      factor_xwobacon=101,
+	    factor_obp=100,       factor_hardhit=100,
+	    factor_bb=99,         factor_so=104,
+	    pa=44042,
+    ),
+    # Nationals Park — WSH
+    3309: _pf(
+      factor_overall=102,   factor_runs=104,
+	    factor_hr_vs_l=103,   factor_hr_vs_r=97,
+	    factor_hits=103,      factor_xwobacon=102,
+	    factor_obp=102,       factor_hardhit=103,
+	    factor_bb=96,         factor_so=94,
+	    pa=44136,
+    ),
+    # loanDepot park — MIA
+    4169: _pf(
+      factor_overall=100,   factor_runs=100,
+	    factor_hr_vs_l=94,    factor_hr_vs_r=81,
+	    factor_hits=101,      factor_xwobacon=99,
+	    factor_obp=101,       factor_hardhit=101,
+	    factor_bb=100,        factor_so=97,
+	    pa=45451,
+    ),
 
     # ── National League Central ───────────────────────────────────────────
-    17:   _pf(),   # Wrigley Field — CHC
-    2889: _pf(),   # Busch Stadium — STL
-    32:   _pf(),   # American Family Field — MIL
-    31:   _pf(),   # PNC Park — PIT
-    2602: _pf(),   # Great American Ball Park — CIN
+    # Wrigley Field — CHC
+    17:   _pf(
+      factor_overall=95,    factor_runs=90,
+	    factor_hr_vs_l=97,    factor_hr_vs_r=101,
+	    factor_hits=94,       factor_xwobacon=99,
+	    factor_obp=96,        factor_hardhit=101,
+	    factor_bb=101,        factor_so=103,
+	    pa=45030,
+    ),
+    # Busch Stadium — STL
+    2889: _pf(
+      factor_overall=98,    factor_runs=96,
+	    factor_hr_vs_l=79,    factor_hr_vs_r=80,
+	    factor_hits=103,      factor_xwobacon=99,
+	    factor_obp=100,       factor_hardhit=102,
+	    factor_bb=92,         factor_so=90,
+	    pa=43238,
+    ),
+    # American Family Field — MIL
+    32:   _pf(
+      factor_overall=97,    factor_runs=94,
+	    factor_hr_vs_l=94,    factor_hr_vs_r=109,
+	    factor_hits=95,       factor_xwobacon=98,
+	    factor_obp=98,        factor_hardhit=96,
+	    factor_bb=105,        factor_so=110,
+	    pa=45680,
+    ),
+    # PNC Park — PIT
+    31:   _pf(
+      factor_overall=100,   factor_runs=100,
+	    factor_hr_vs_l=96,    factor_hr_vs_r=70,
+	    factor_hits=102,      factor_xwobacon=101,
+	    factor_obp=102,       factor_hardhit=102,
+	    factor_bb=99,         factor_so=98,
+	    pa=44874,
+    ),
+    # Great American Ball Park — CIN
+    2602: _pf(
+      factor_overall=103,   factor_runs=106,
+	    factor_hr_vs_l=129,   factor_hr_vs_r=119,
+	    factor_hits=100,      factor_xwobacon=101,
+	    factor_obp=101,       factor_hardhit=96,
+	    factor_bb=96,         factor_so=107,
+	    pa=43772,
+    ),
 
     # ── National League West ──────────────────────────────────────────────
-    22:   _pf(),   # Dodger Stadium — LAD
-    2680: _pf(),   # Petco Park — SD
-    2395: _pf(),   # Oracle Park — SF
-    15:   _pf(),   # Chase Field — ARI
-    19:   _pf(),   # Coors Field — COL
+    # Dodger Stadium — LAD
+    22:   _pf(
+      factor_overall=101,   factor_runs=102,
+	    factor_hr_vs_l=123,   factor_hr_vs_r=135,
+	    factor_hits=97,       factor_xwobacon=103,
+	    factor_obp=99,        factor_hardhit=101,
+	    factor_bb=102,        factor_so=101,
+	    pa=46943,
+    ),
+    # Petco Park — SD
+    2680: _pf(
+      factor_overall=97,    factor_runs=94,
+	    factor_hr_vs_l=96,    factor_hr_vs_r=116,
+	    factor_hits=95,       factor_xwobacon=101,
+	    factor_obp=96,        factor_hardhit=99,
+	    factor_bb=101,        factor_so=103,
+	    pa=44563,
+    ),
+    # Oracle Park — SF
+    2395: _pf(
+      factor_overall=98,    factor_runs=96,
+	    factor_hr_vs_l=73,    factor_hr_vs_r=82,
+	    factor_hits=101,      factor_xwobacon=97,
+	    factor_obp=99,        factor_hardhit=97,
+	    factor_bb=93,         factor_so=97,
+	    pa=43309,
+    ),
+    # Chase Field — ARI
+    15:   _pf(
+      factor_overall=104,   factor_runs=108,
+	    factor_hr_vs_l=76,    factor_hr_vs_r=106,
+	    factor_hits=105,      factor_xwobacon=102,
+	    factor_obp=103,       factor_hardhit=102,
+	    factor_bb=98,         factor_so=90,
+	    pa=44411,
+    ),
+    # Coors Field — COL
+    19:   _pf(
+      factor_overall=112,   factor_runs=125,
+	    factor_hr_vs_l=114,   factor_hr_vs_r=100,
+	    factor_hits=118,      factor_xwobacon=101,
+	    factor_obp=111,       factor_hardhit=101,
+	    factor_bb=100,        factor_so=90,
+	    pa=44542,
+    ),
 }
 
 # Columns refreshed on conflict: every factor field plus provenance. The keys
