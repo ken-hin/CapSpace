@@ -11,6 +11,8 @@ import asyncio
 from app.db.session import async_session
 from app.seeds.sports.mlb.seed_venues import seed_venues
 from app.seeds.sports.mlb.seed_teams import seed_teams
+from app.seeds.sports.mlb.seed_park_factors_2026 import seed_park_factors
+from app.seeds.sports.mlb.seed_park_dimensions import seed_park_dimensions
 
 
 async def main():
@@ -24,10 +26,12 @@ async def main():
         await session.flush()  # venues get DB IDs assigned
 
         team_count = await seed_teams(session)
+        pf_count = await seed_park_factors(session)
+        pd_count = await seed_park_dimensions(session)
 
         await session.commit()
 
-    print(f"Seeded {venue_count} venues, {team_count} teams")
+    print(f"Seeded {venue_count} venues, {team_count} teams, {pf_count} park factors, {pd_count} park dimensions.")
 
 
 if __name__ == "__main__":
