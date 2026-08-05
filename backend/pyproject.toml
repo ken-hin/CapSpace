@@ -36,11 +36,17 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
+test = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
-    "httpx>=0.25",
 ]
+dev = [
+    {include-group = "test"},
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
 [build-system]
 requires = ["hatchling"]
