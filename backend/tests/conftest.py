@@ -1,13 +1,20 @@
 """Shared pytest fixtures for the test suite.
 
-Defines fixtures that are automatically discovered by pytest across all test
-modules, notably an async HTTP ``client`` bound directly to the FastAPI app via
-an in-process ASGI transport (no network/server required).
+Fixtures here are auto-discovered by pytest across all test modules. They fall into
+two groups: an async HTTP ``client`` bound directly to the FastAPI app via an
+in-process ASGI transport (no network or running server required), and a database
+test harness — ``test_engine`` builds a session-wide engine against a separate test
+database, ``_create_schema`` creates and drops the tables around the run, and
+``session`` hands each test an isolated AsyncSession that is rolled back afterward.
 """
 
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from app.models.base import Base
+import app.models            # noqa: F401
+import app.sports.mlb.models # noqa: F401
 
 @pytest.fixture
 async def client():
@@ -23,78 +30,86 @@ async def client():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
+# ════════════════════════════════════════════════════════════════════════════════════════════
+#                                  DATABASE TEST HARNESS
+# ════════════════════════════════════════════════════════════════════════════════════════════
+# ───────────────────────────────────── TEST ENGINE ──────────────────────────────────────────
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/sports_analytics_test"
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# DATABASE TEST HARNESS  —  SCAFFOLD (comments + pseudocode; write the real code)
-# ═══════════════════════════════════════════════════════════════════════════════
-#
-# GOAL: give every DB test a ready-to-use AsyncSession that talks to a SEPARATE
-#       test database and rolls back after each test, so tests stay isolated and
-#       never touch your dev data.
-#
-# ── ONE-TIME PREP (outside this file) ─────────────────────────────────────────
-#
-#   1. Add to backend/pyproject.toml so async tests/fixtures actually run:
-#
-#          [tool.pytest.ini_options]
-#          asyncio_mode = "auto"
-#          testpaths = ["tests"]
-#
-#   2. Start the DB container and create the throwaway test database once:
-#
-#          docker compose up -d db
-#          docker exec sports-analytics-db createdb -U postgres sports_analytics_test
-#
-# ── IMPORTS you'll add at the top of this file ────────────────────────────────
-#
-#       from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-#       from app.models.base import Base
-#       # Import every model module so Base.metadata "knows" all tables. Importing
-#       # the two package __init__ files that re-export them is the easy way:
-#       import app.models            # noqa: F401
-#       import app.sports.mlb.models # noqa: F401
-#
-#
-# ── 1) TEST ENGINE ────────────────────────────────────────────────────────────
-# TODO: a SEPARATE engine pointed at the TEST db. Do NOT reuse
-#       app.db.session.engine — that one points at your DEV database.
-#
-#   TEST_DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/sports_analytics_test"
-#
-#   @pytest.fixture(scope="session")
-#   def test_engine():
-#       # create_async_engine(TEST_DATABASE_URL)
-#       # scope="session" => built once for the whole test run
-#       ...
-#
-#
-# ── 2) SCHEMA SETUP ───────────────────────────────────────────────────────────
-# TODO: before any test runs, create all tables in the test DB from your models.
-#       (This is create_all — fine for relationship/constraint tests. The
-#        hypertable test runs the real migration instead; see test_migrations/.)
-#
-#   @pytest.fixture(scope="session", autouse=True)
-#   async def _create_schema(test_engine):
-#       # async with test_engine.begin() as conn:
-#       #     await conn.run_sync(Base.metadata.create_all)
-#       # yield
-#       # # (optional teardown) await conn.run_sync(Base.metadata.drop_all)
-#       ...
-#
-#
-# ── 3) SESSION FIXTURE  (the harness each test plugs into) ─────────────────────
-# TODO: hand each test a session wrapped so EVERYTHING it does is rolled back.
-#       A test asks for it just by naming it as a parameter:  def test_x(session):
-#
-#   @pytest.fixture
-#   async def session(test_engine):
-#       # rough shape — open a connection, begin a transaction, bind a session to
-#       # it, yield, then roll the transaction back so nothing survives:
-#       #
-#       #   async with test_engine.connect() as conn:
-#       #       txn = await conn.begin()
-#       #       Session = async_sessionmaker(bind=conn, expire_on_commit=False)
-#       #       async with Session() as s:
-#       #           yield s
-#       #       await txn.rollback()
-#       ...
+@pytest.fixture(scope="session")
+async def test_engine():
+    """Provide one async Engine for the whole test session, bound to the TEST database.
+
+    The engine owns the connection pool and is the entry point for talking to
+    Postgres. It is built once (``scope="session"``) because standing up an engine
+    and its pool is relatively expensive and every test can safely share it —
+    per-test isolation is handled separately by the ``session`` fixture's rollback,
+    not by giving each test its own engine.
+
+    Yields:
+        AsyncEngine: Engine connected to ``sports_analytics_test``.
+    """
+    engine = create_async_engine(TEST_DATABASE_URL)  # build the engine + pool once, against the TEST DB
+    yield engine                                     # hand it to any fixture/test that asks for it
+    await engine.dispose()                           # close the pool so no connections leak past the run
+
+# ───────────────────────────────────── SCHEMA SETUP ─────────────────────────────────────────
+@pytest.fixture(scope="session", autouse=True)
+async def _create_schema(test_engine):
+    """Create the schema once before any test runs and drop it after the last one.
+
+    ``autouse=True`` makes this run automatically for the session — no test has to
+    request it. ``create_all`` builds every table registered on ``Base.metadata``,
+    which is why all model modules are imported at the top of this file: importing a
+    model registers its table, and ``create_all`` only creates tables it knows about.
+
+    ``create_all`` runs inside its own ``begin()`` block that commits when the block
+    exits, and that commit matters. The ``session`` fixture opens its own separate
+    connection, and a separate connection can only see tables that have already been
+    committed — leave the schema in an open, uncommitted transaction and tests fail
+    with "relation does not exist". The matching ``drop_all`` after the ``yield``
+    leaves the test database empty once the run finishes.
+
+    Note:
+        This creates plain Postgres tables straight from the models. The TimescaleDB
+        hypertables are validated by the real Alembic migration under
+        ``tests/test_migrations`` instead of here.
+    """
+    async with test_engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)  # DDL commits on block exit -> visible to other connections
+    yield                                                    # tests run here, against the live schema
+    async with test_engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)    # leave the test DB clean for next time
+
+# ────────────────── SESSION FIXTURE (the harness each test plugs into) ─────────────────────
+@pytest.fixture
+async def session(test_engine):
+    """Yield an AsyncSession whose writes are undone at the end of each test.
+
+    This is the harness DB tests plug into: a test simply names ``session`` as a
+    parameter and receives a ready-to-use session. Each test runs inside its own
+    transaction that is rolled back on teardown, so tests never see one another's
+    data and the database is left untouched between tests.
+
+    How the isolation works:
+        1. open a dedicated connection and begin an outer transaction on it,
+        2. bind a session to that same connection,
+        3. hand the session to the test,
+        4. on teardown, close the session, then roll the outer transaction back.
+
+    Because the connection is already inside a transaction when the session starts,
+    SQLAlchemy nests the session's work in a SAVEPOINT by default. That means even a
+    test that calls ``session.commit()`` stays contained — the commit releases the
+    savepoint, and the outer ``rollback()`` still wipes everything out.
+
+    Yields:
+        AsyncSession: A session bound to a transaction that is rolled back afterward.
+    """
+    async with test_engine.connect() as connection:
+        transaction = await connection.begin()  # outer transaction we roll back after the test
+        # expire_on_commit=False keeps ORM objects usable after a commit, so tests can
+        # still read an object's attributes when asserting on it.
+        session = async_sessionmaker(bind=connection, expire_on_commit=False)
+        async with session() as sesh:
+            yield sesh                           # the test runs here, using this session
+        await transaction.rollback()             # undo everything the test did
