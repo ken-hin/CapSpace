@@ -16,6 +16,8 @@ from app.models.base import Base
 import app.models            # noqa: F401
 import app.sports.mlb.models # noqa: F401
 
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/sports_analytics_test"
+
 @pytest.fixture
 async def client():
     """Yield an async HTTP client wired to the app via in-process ASGI transport.
@@ -30,12 +32,12 @@ async def client():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
+
 # ════════════════════════════════════════════════════════════════════════════════════════════
 #                                  DATABASE TEST HARNESS
 # ════════════════════════════════════════════════════════════════════════════════════════════
-# ───────────────────────────────────── TEST ENGINE ──────────────────────────────────────────
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/sports_analytics_test"
 
+# ───────────────────────────────────── TEST ENGINE ──────────────────────────────────────────
 @pytest.fixture(scope="session")
 async def test_engine():
     """Provide one async Engine for the whole test session, bound to the TEST database.
@@ -52,6 +54,7 @@ async def test_engine():
     engine = create_async_engine(TEST_DATABASE_URL)  # build the engine + pool once, against the TEST DB
     yield engine                                     # hand it to any fixture/test that asks for it
     await engine.dispose()                           # close the pool so no connections leak past the run
+
 
 # ───────────────────────────────────── SCHEMA SETUP ─────────────────────────────────────────
 @pytest.fixture(scope="session", autouse=True)
@@ -80,6 +83,7 @@ async def _create_schema(test_engine):
     yield                                                    # tests run here, against the live schema
     async with test_engine.begin() as connection:
         await connection.run_sync(Base.metadata.drop_all)    # leave the test DB clean for next time
+
 
 # ────────────────── SESSION FIXTURE (the harness each test plugs into) ─────────────────────
 @pytest.fixture
