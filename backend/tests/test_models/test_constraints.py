@@ -26,42 +26,39 @@ test; the fixture rolls back when the test ends.
 --------------------------------------------------------------------------------
 """
 
+import pytest
+from sqlalchemy.exc import IntegrityError
+from app.models.enums import Sport
+from app.models.venue import Venue
+from app.sports.mlb.models.park_factor import ParkFactor
 
-# TEST 1 — UNIQUE constraint: no two ParkFactors for the same (venue_id, season).
-# Your model declares:  UniqueConstraint("venue_id", "season", name="uq_park_factors_venue_season")
 async def test_duplicate_venue_season_is_rejected(session):
-    # ARRANGE
-    #   1. Create a Venue (ParkFactor.venue_id is a FK → venues.id, so a real
-    #      venue must exist first). Add it, then `await session.flush()` to get
-    #      its generated id.
-    #   2. Create ParkFactor #1 for (venue.id, season=2025). Add + flush.
-    #      This one should succeed.
-    #
-    # ACT + ASSERT
-    #   3. Create ParkFactor #2 for the SAME (venue.id, 2025). Add it, then:
-    #
-    #          with pytest.raises(IntegrityError):
-    #              await session.flush()
-    #
-    #      The test passes only if that flush raises.
-    ...
+    # Create a venue, add to test session, and flush to get generated venue.id.
+    venue = Venue(name="Test Venue", city="Nashville", sport=Sport.MLB, external_id="test_venue_id")
+    session.add(venue)
+    await session.flush()
+    # Create first ParkFactor, add to test session, and flush to ensure it's added before second.
+    session.add(ParkFactor(venue_id=venue.id,  season=2025))
+    await session.flush()
+    # Attempt to add second ParkFactor with same venue_id and season, expect IntegrityError.
+    session.add(ParkFactor(venue_id=venue.id, season=2025))
+    with pytest.raises(IntegrityError):
+        await session.flush()
 
 
-# TEST 2 — NOT NULL: a required column can't be empty.
-# e.g. ParkFactor.venue_id and .season are nullable=False.
 async def test_missing_required_field_is_rejected(session):
-    # ARRANGE: build a ParkFactor but leave a required field unset (e.g. no season).
-    # ACT + ASSERT: add it and expect flush to raise IntegrityError.
-    #
-    #     with pytest.raises(IntegrityError):
-    #         await session.flush()
-    ...
+    venue = Venue(name="Test Venue", city="Nashville", sport=Sport.MLB, external_id="test_venue_id")
+    session.add(venue)
+    await session.flush()
+    # Attempt to add a ParkFactor with season=None, expect IntegrityError.
+    session.add(ParkFactor(venue_id=venue.id, season=None))
+    with pytest.raises(IntegrityError):
+        await session.flush()
 
 
-# TEST 3 (stretch) — FOREIGN KEY: can't point at a venue that doesn't exist.
 async def test_orphan_foreign_key_is_rejected(session):
-    # ARRANGE: ParkFactor with venue_id = 999999 (no such venue) + a valid season.
-    # ACT + ASSERT: flush raises IntegrityError.
-    #     with pytest.raises(IntegrityError):
-    #         await session.flush()
-    ...
+    # Attempt to add a ParkFactor with venue_id=999999, expect IntegrityError.
+    session.add(ParkFactor(venue_id=999999, season=2024))
+    with pytest.raises(IntegrityError):
+        await session.flush()
+
