@@ -1,62 +1,70 @@
 """Composite primary-key tests — prove the multi-column PK rejects duplicates.
 
 Most tables have a single-column primary key (`id`). A few of yours don't: the
-time-series tables declare a COMPOSITE primary key so the timestamp can be part of
-the key (this is what lets them become TimescaleDB hypertables later). Examples:
+time-series tables declare a COMPOSITE primary key so the timestamp is part of the
+key (this is what lets them become TimescaleDB hypertables later), e.g.
+WeatherSnapshot -> PrimaryKeyConstraint("id", "captured_at").
 
-    WeatherSnapshot -> PrimaryKeyConstraint("id", "captured_at")
-    StatEvent       -> PrimaryKeyConstraint("id", "occurred_at")
-    BookOdds        -> composite PK too
+A primary key is "unique + not null" across the WHOLE combination, so two rows only
+collide when EVERY key column matches. The gotcha: `id` is autoincrement, so two
+rows inserted without an explicit id get different ids and never collide — to force
+a duplicate you must set the SAME id AND the same timestamp on both rows.
 
-A primary key is "unique + not null" on the WHOLE combination. So two rows are only
-a collision when EVERY key column matches. That's the twist worth testing, and it
-comes with a gotcha:
-
-    `id` is autoincrement. If you insert two rows WITHOUT setting id, each gets a
-    fresh id and they never collide — so you'd be testing nothing. To actually force
-    a duplicate you must set the SAME id AND the same timestamp on both rows.
-
-We use WeatherSnapshot because it only needs one parent (a Venue). Runs against the
-real test DB via `session` (conftest.py); usual flush/rollback rules apply.
-
-NOTE: create_all builds these as PLAIN Postgres tables in the test DB (the hypertable
-step lives in the Alembic migration, tested separately). A plain table still enforces
-the composite PK, so this test is valid here.
-
---------------------------------------------------------------------------------
-IMPORTS YOU'LL LIKELY NEED (write them yourself):
-    import pytest
-    from datetime import datetime, timezone
-    from sqlalchemy.exc import IntegrityError
-    from app.models.enums import Sport
-    from app.models.venue import Venue
-    from app.models.weather_snapshot import WeatherSnapshot
---------------------------------------------------------------------------------
+Runs against the real test DB via the `session` fixture (conftest.py); usual
+flush/rollback rules apply. create_all builds these as PLAIN Postgres tables here
+(the hypertable step lives in the Alembic migration, tested separately), and a
+plain table still enforces the composite PK, so these tests are valid.
 """
 
+import pytest
+from datetime import datetime, timezone
+from sqlalchemy.exc import IntegrityError
+from app.models.enums import Sport
+from app.models.venue import Venue
+from app.models.weather_snapshot import WeatherSnapshot
 
-# TEST 1 — same (id, captured_at) is rejected as a duplicate primary key.
+
 async def test_duplicate_composite_pk_is_rejected(session):
-    # ARRANGE
-    #   1. minimal Venue + `await session.flush()` for venue.id.
-    #   2. pick a fixed timestamp:  ts = datetime(2026, 4, 1, 18, 0, tzinfo=timezone.utc)
-    #   3. insert WeatherSnapshot(id=1, venue_id=venue.id, captured_at=ts) + flush.
-    #
-    # ACT + ASSERT
-    #   4. insert a SECOND WeatherSnapshot with the SAME id=1 and SAME captured_at=ts:
-    #          session.add(WeatherSnapshot(id=1, venue_id=venue.id, captured_at=ts))
-    #          with pytest.raises(IntegrityError):
-    #              await session.flush()
-    ...
+    """Two WeatherSnapshot rows with the same ``(id, captured_at)`` are rejected.
+
+    The primary key is the whole ``(id, captured_at)`` pair, so a duplicate has to
+    match on both columns. Both rows here pin ``id=1`` and the same ``captured_at``,
+    so the second INSERT collides with the composite PK and the flush raises
+    ``IntegrityError``. The venue is created first so the snapshots point at a real
+    parent, isolating the failure to the PK rather than the ``venue_id`` foreign key.
+    """
+    # Parent venue: flush so its generated id is available as a FK.
+    tv = Venue(name = "Test Venue", city = "Nashville", sport = Sport.MLB, external_id = "t_venue_id")
+    session.add(tv)
+    await session.flush()
+    # One fixed capture time reused on both rows so their (id, captured_at) keys match.
+    ts = datetime(2026, 4, 1, 18, 0, tzinfo=timezone.utc)
+    # First snapshot inserts cleanly.
+    session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts))
+    await session.flush()
+    # Second snapshot on the SAME (id, captured_at) -> composite-PK collision on flush.
+    session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts))
+    with pytest.raises(IntegrityError):
+        await session.flush()
 
 
-# TEST 2 — same id but a DIFFERENT captured_at is allowed (proves the PK is composite).
-#
-# If this row were rejected, your "primary key" would effectively be `id` alone and the
-# timestamp wouldn't be doing its job. Allowing it is what makes the table a time series.
 async def test_same_id_different_timestamp_is_allowed(session):
-    # ARRANGE: Venue + flush. Two timestamps ts1 != ts2.
-    #          WeatherSnapshot(id=1, venue_id=venue.id, captured_at=ts1) + flush.
-    # ACT: WeatherSnapshot(id=1, venue_id=venue.id, captured_at=ts2) + flush.
-    # ASSERT: no error — both rows coexist because (1, ts1) != (1, ts2).
-    ...
+    """Same ``id`` but a different ``captured_at`` is allowed — the PK is composite.
+
+    If ``id`` alone were the key, the second row would be rejected. Because the key
+    is ``(id, captured_at)``, ``(1, ts1)`` and ``(1, ts2)`` are distinct, so both
+    rows persist — which is what makes the table usable as a time series. The flush
+    raising nothing is the assertion here.
+    """
+    # Parent venue.
+    tv = Venue(name = "Test Venue", city = "Nashville", sport = Sport.MLB, external_id = "t_venue_id")
+    session.add(tv)
+    await session.flush()
+    # Two different capture times; id is held constant at 1.
+    ts1 = datetime(2026, 4, 1, 18, 0, tzinfo=timezone.utc)
+    ts2 = datetime(2026, 4, 1, 19, 0, tzinfo=timezone.utc)
+    session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts1))
+    await session.flush()
+    # (1, ts2) differs from (1, ts1) in the key, so this second row is accepted.
+    session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts2))
+    await session.flush()
