@@ -7,10 +7,16 @@ cross-sport queries on the base Game table stay clean without nullable
 MLB-specific columns polluting it.
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Integer, String, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.game import Game
+    from app.models.player import Player
 
 
 class MlbGameDetails(Base, TimestampMixin):
@@ -37,7 +43,8 @@ class MlbGameDetails(Base, TimestampMixin):
         away_runs_by_inning: JSON array of away runs scored per inning.
         is_doubleheader: True if this game is part of a doubleheader.
         doubleheader_game_num: Which game of the doubleheader (1 or 2; nullable).
-        game: Eager-loaded :class:`~app.models.game.Game` relationship.
+        game: The parent :class:`~app.models.game.Game`; the 1:1 back-reference
+            paired with ``Game.mlb_details`` via ``back_populates``.
         home_starter: Eager-loaded home starting :class:`~app.models.player.Player`.
         away_starter: Eager-loaded away starting :class:`~app.models.player.Player`.
         winning_pitcher: Eager-loaded winning :class:`~app.models.player.Player`.
@@ -85,12 +92,14 @@ class MlbGameDetails(Base, TimestampMixin):
     doubleheader_game_num: Mapped[int | None] = mapped_column(Integer)  # 1 or 2
 
     # --- Relationships ---
-    game = relationship("Game", lazy="selectin")
-    home_starter = relationship("Player", foreign_keys=[home_starter_id], lazy="selectin")
-    away_starter = relationship("Player", foreign_keys=[away_starter_id], lazy="selectin")
-    winning_pitcher = relationship("Player", foreign_keys=[winning_pitcher_id], lazy="selectin")
-    losing_pitcher = relationship("Player", foreign_keys=[losing_pitcher_id], lazy="selectin")
-    save_pitcher = relationship("Player", foreign_keys=[save_pitcher_id], lazy="selectin")
+    # Parent game (1:1). back_populates pairs with Game.mlb_details; game_id being
+    # both PK and FK is what enforces the one-to-one at the DB level.
+    game: Mapped["Game"] = relationship("Game", back_populates="mlb_details", lazy="selectin")
+    home_starter: Mapped["Player | None"] = relationship("Player", foreign_keys=[home_starter_id], lazy="selectin")
+    away_starter: Mapped["Player | None"] = relationship("Player", foreign_keys=[away_starter_id], lazy="selectin")
+    winning_pitcher: Mapped["Player | None"] = relationship("Player", foreign_keys=[winning_pitcher_id], lazy="selectin")
+    losing_pitcher: Mapped["Player | None"] = relationship("Player", foreign_keys=[losing_pitcher_id], lazy="selectin")
+    save_pitcher: Mapped["Player | None"] = relationship("Player", foreign_keys=[save_pitcher_id], lazy="selectin")
 
     def __repr__(self) -> str:
         """Return a concise debug representation for logging/debugging."""

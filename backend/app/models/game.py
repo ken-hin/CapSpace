@@ -6,10 +6,16 @@ context, and a denormalized weather snapshot captured at game time.
 """
 
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 from sqlalchemy import String, Integer, ForeignKey, DateTime, Boolean, Date, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 from app.models.enums import Sport
+
+if TYPE_CHECKING:
+    from app.models.team import Team
+    from app.models.venue import Venue
+    from app.sports.mlb.models.mlb_game_details import MlbGameDetails
 
 
 class Game(Base, TimestampMixin):
@@ -49,6 +55,9 @@ class Game(Base, TimestampMixin):
         home_team: Eager-loaded home :class:`~app.models.team.Team` relationship.
         away_team: Eager-loaded away :class:`~app.models.team.Team` relationship.
         venue: Eager-loaded :class:`~app.models.venue.Venue` relationship.
+        mlb_details: The 1:1 MLB-only
+            :class:`~app.sports.mlb.models.mlb_game_details.MlbGameDetails` extension
+            for this game — ``None`` for non-MLB games; cascade-deleted with the game.
         created_at: Row creation timestamp (from :class:`TimestampMixin`).
         updated_at: Last update timestamp (from :class:`TimestampMixin`).
     """
@@ -95,9 +104,20 @@ class Game(Base, TimestampMixin):
     weather_humidity_pct: Mapped[int | None] = mapped_column(Integer)
 
     # Relationships
-    home_team = relationship("Team", foreign_keys=[home_team_id], lazy="selectin")
-    away_team = relationship("Team", foreign_keys=[away_team_id], lazy="selectin")
-    venue = relationship("Venue", lazy="selectin")
+    venue: Mapped["Venue | None"] = relationship("Venue", lazy="selectin")
+    home_team: Mapped["Team"] = relationship("Team", foreign_keys=[home_team_id], lazy="selectin")
+    away_team: Mapped["Team"] = relationship("Team", foreign_keys=[away_team_id], lazy="selectin")
+    # 1:1 MLB extension. uselist=False makes this a single object, not a list.
+    # cascade + passive_deletes defer child removal to the DB's ON DELETE CASCADE,
+    # so deleting a Game also deletes its details row.
+    mlb_details: Mapped["MlbGameDetails | None"] = relationship(
+        "MlbGameDetails",
+        back_populates="game",
+        uselist=False,
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     def __repr__(self) -> str:
         """Return a concise debug representation (id, matchup, and sport)."""
