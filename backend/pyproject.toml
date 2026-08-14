@@ -33,12 +33,14 @@ dependencies = [
     "pandas-stubs~=3.0.3",
     "lxml>=6.1.1",
     "playwright>=1.60.0",
+    "uliweb-alembic>=0.6.9",
 ]
 
 [dependency-groups]
 test = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
+    "psycopg2-binary>=2.9",  # sync driver for the migration/hypertable test (admin + catalog queries)
 ]
 dev = [
     {include-group = "test"},
