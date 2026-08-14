@@ -37,6 +37,7 @@ async def test_venue_defaults_are_applied(session):
     tv = Venue(name = "Test Venue", city = "Nashville", sport = Sport.MLB)
     session.add(tv)
     await session.flush()
+
     # Assert the three defaults landed.
     assert tv.country == "USA" and tv.timezone == "America/New_York" and tv.is_active is True
 
@@ -54,6 +55,7 @@ async def test_game_scoreboard_defaults(session):
     at = Team(external_id="at", sport=Sport.MLB, name="Away Team", abbreviation="AT", city="Away")
     session.add_all([ht, at])
     await session.flush()
+
     # Minimal Game: only the nullable=False fields set; the scoreboard fields default.
     tg = Game(home_team_id=ht.id, away_team_id=at.id, sport=Sport.MLB, scheduled_at=datetime.now(timezone.utc))
     session.add(tg)
@@ -75,9 +77,11 @@ async def test_timestamps_are_server_generated(session):
     tv = Venue(name = "Test Venue", city = "Nashville", sport = Sport.MLB)
     session.add(tv)
     await session.flush()
+
     # refresh pulls the server-computed values back onto the object.
     await session.refresh(tv)
     assert tv.created_at is not None and tv.updated_at is not None
+
     # Change a field and re-read. NOTE: Postgres now() is the *transaction* start time,
     # constant across this single-transaction test — so updated_at ends up equal in
     # value to created_at here; showing an advancing updated_at needs a separate txn.

@@ -33,9 +33,11 @@ async def test_duplicate_venue_season_is_rejected(session):
     t_venue = Venue(name="Test Venue", city="Nashville", sport=Sport.MLB, external_id="t_venue_id")
     session.add(t_venue)
     await session.flush()
+
     # First ParkFactor for this venue+season: flush it in so the next one collides.
     session.add(ParkFactor(venue_id=t_venue.id,  season=2025))
     await session.flush()
+
     # Second ParkFactor on the same unique key -> the flush must raise.
     session.add(ParkFactor(venue_id=t_venue.id, season=2025))
     with pytest.raises(IntegrityError):
@@ -52,6 +54,7 @@ async def test_missing_required_field_is_rejected(session):
     t_venue = Venue(name="Test Venue", city="Nashville", sport=Sport.MLB, external_id="t_venue_id")
     session.add(t_venue)
     await session.flush()
+
     # season is NOT NULL; passing None violates that constraint on flush.
     session.add(ParkFactor(venue_id=t_venue.id, season=None))
     with pytest.raises(IntegrityError):

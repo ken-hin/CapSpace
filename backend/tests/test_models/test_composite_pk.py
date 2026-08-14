@@ -37,11 +37,14 @@ async def test_duplicate_composite_pk_is_rejected(session):
     tv = Venue(name = "Test Venue", city = "Nashville", sport = Sport.MLB, external_id = "t_venue_id")
     session.add(tv)
     await session.flush()
+
     # One fixed capture time reused on both rows so their (id, captured_at) keys match.
     ts = datetime(2026, 4, 1, 18, 0, tzinfo=timezone.utc)
+
     # First snapshot inserts cleanly.
     session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts))
     await session.flush()
+
     # Second snapshot on the SAME (id, captured_at) -> composite-PK collision on flush.
     session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts))
     with pytest.raises(IntegrityError):
@@ -60,11 +63,13 @@ async def test_same_id_different_timestamp_is_allowed(session):
     tv = Venue(name = "Test Venue", city = "Nashville", sport = Sport.MLB, external_id = "t_venue_id")
     session.add(tv)
     await session.flush()
+
     # Two different capture times; id is held constant at 1.
     ts1 = datetime(2026, 4, 1, 18, 0, tzinfo=timezone.utc)
     ts2 = datetime(2026, 4, 1, 19, 0, tzinfo=timezone.utc)
     session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts1))
     await session.flush()
+
     # (1, ts2) differs from (1, ts1) in the key, so this second row is accepted.
     session.add(WeatherSnapshot(id=1, venue_id=tv.id, captured_at=ts2))
     await session.flush()
