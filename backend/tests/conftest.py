@@ -109,7 +109,15 @@ async def session(test_engine):
         transaction = await connection.begin()  # outer transaction we roll back after the test
         # expire_on_commit=False keeps ORM objects usable after a commit, so tests can
         # still read an object's attributes when asserting on it.
-        session = async_sessionmaker(bind=connection, expire_on_commit=False)
+        # join_transaction_mode="create_savepoint" runs the session inside a SAVEPOINT, so a
+        # failed flush (e.g. an expected IntegrityError) rolls back only the savepoint and
+        # leaves the outer transaction intact for a clean teardown rollback (no
+        # "transaction already deassociated from connection" warning).
+        session = async_sessionmaker(
+            bind=connection,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
         async with session() as sesh:
             yield sesh                           # the test runs here, using this session
         await transaction.rollback()             # undo everything the test did

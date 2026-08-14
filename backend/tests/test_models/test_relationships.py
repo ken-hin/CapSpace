@@ -112,6 +112,10 @@ async def test_second_details_for_same_game_is_rejected(session):
     session.add(game_details)
     await session.flush()
 
+    # Drop the first row from the identity map so the duplicate collides at the DB level
+    # (IntegrityError) instead of tripping SQLAlchemy's in-session identity-conflict check.
+    session.expunge(game_details)
+
     # Second details on the SAME game_id -> duplicate primary key on flush.
     dup_game_details = MlbGameDetails(game_id=game.id, mlb_game_pk=2)
     session.add(dup_game_details)
