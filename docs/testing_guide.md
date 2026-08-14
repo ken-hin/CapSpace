@@ -20,10 +20,14 @@ migrations, and seeds are done; Branch 1's "definition of done" also calls for:
 Once these pass (and `alembic upgrade head` round-trips on a fresh DB), Branch 1
 can merge to `main`, unblocking Branch 2 (ingestion) and Branch 3 (Statcast/ML).
 
-**Current status:** the three files exist as commented scaffolds. `pytest` collects
-all 8 tests but they error at setup because the `session` and `migrated_db`
-fixtures aren't written yet. **Next step: write the `session` fixture in
-`conftest.py`.**
+**Current status (2026-08-07):** the DB harness in `conftest.py` is **built and
+working** — `test_engine`, `_create_schema`, and `session` are all written, and the
+async loop scopes are pinned in `pyproject.toml`. The model tests now run their
+bodies (which are still `...` placeholders, so they pass trivially). **Next step:
+write the real arrange/act/assert in `test_constraints.py` and
+`test_relationships.py`, then the `migrated_db` fixture + `test_hypertables.py`.**
+See §8 for how the finished harness works and §9 for the setup snags we hit getting
+here.
 
 ---
 
@@ -209,6 +213,41 @@ exists and stores data — silently as a plain table — and you won't notice un
 it's huge and slow. The test queries the catalog and asserts `pitch_events`,
 `book_odds`, and `stat_events` are registered.
 
+### 3d. Event loops (and the "different loop" error)
+
+Async code doesn't run itself — a single **event loop** drives it. The loop is the
+conductor: it starts an `await`, and while that call waits on the database it runs
+other ready work, then resumes the first when its answer arrives. One loop, juggling
+everything.
+
+The rule that trips people up: **anything created inside async code is bound to the
+loop that was running when it was born** — especially database connections. An
+`asyncpg` connection made on loop A cannot be used from loop B.
+
+By default `pytest-asyncio` gives *each test its own fresh loop*. That collides with a
+**session-scoped** async fixture: `test_engine` builds the engine (and opens
+connections) on the session's loop, but a function-scoped test runs on its own new
+loop and tries to use those connections — so you get:
+
+```
+RuntimeError: ... got Future ... attached to a different loop
+```
+
+The fix is to make everything share one loop, via the `pyproject.toml` settings in
+§5:
+
+```toml
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+```
+
+Now fixtures and tests all run on the same session-wide loop, and the engine's
+connections are valid everywhere. One distinction worth keeping: **loop scope** (which
+event loop something runs on) and **fixture scope** (how often a fixture is rebuilt)
+are independent axes. Pinning the loop to "session" does *not* force your `session`
+fixture to be session-scoped — it stays function-scoped (fresh, rolled back per test)
+while simply running on the shared loop.
+
 ---
 
 ## 4. Setting up the test database
@@ -267,14 +306,23 @@ dev = [
 ]
 ```
 
-**Pytest config** — required so async tests run without decorating each one, and
-so pytest knows where tests live:
+**Pytest config** — makes async tests run without decorating each one, tells pytest
+where tests live, and (the last two lines) pins every async fixture and test to a
+single **session-wide event loop**:
 
 ```toml
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 ```
+
+The two `*_loop_scope` lines aren't optional polish: without them the session-scoped
+`test_engine` and the function-scoped tests run on *different* event loops and you hit
+`RuntimeError: got Future ... attached to a different loop`. Setting them also
+silences pytest-asyncio's "configuration option is unset" warning. See §3d for what an
+event loop is and why this fixes it.
 
 Notes:
 
@@ -322,52 +370,239 @@ uv run pytest
   couldn't be provided). The test body never ran.
 - **FAILED** = the body ran and an assertion (or unexpected exception) failed.
 
-Right now all tests show `E` with `fixture 'session' not found` /
-`fixture 'migrated_db' not found` — expected, because those fixtures are still
-pseudocode. That's a *good* checkpoint: collection + config + asyncio all work; only
-the fixtures are missing.
-
-Once the `session` fixture exists (and the test DB is up), the six model tests will
-run their bodies and **pass trivially** — a body of just `...` has no assertions, so
-it passes. That confirms the harness works; then you replace each `...` with real
-arrange / act / assert. (The Pydantic deprecation warning is unrelated and harmless.)
+As of now the six **model** tests run their bodies and **pass trivially** — a body
+of just `...` has no assertions, so it passes. That's the checkpoint that proves the
+harness works end to end: collection, config, asyncio, the engine, `create_all`, and
+the rollback `session` all function. The two **hypertable** tests still show `E`
+(`fixture 'migrated_db' not found`) — expected, because that fixture is the one piece
+not built yet. Next you replace each `...` with real arrange / act / assert, and
+write `migrated_db`. (The Pydantic deprecation warning is unrelated and harmless.)
 
 ---
 
-## 8. The session fixture — your next step
+## 8. The DB harness — how it works
 
-Mental model, three pieces (all scaffolded in `conftest.py`):
+The harness is three fixtures in `conftest.py`, each feeding the next:
+`test_engine` → `_create_schema` → `session`. A DB test just names `session` as a
+parameter and receives a ready-to-use, auto-rolled-back `AsyncSession`.
 
-1. **Test engine** — an `AsyncSession`-capable engine pointed at
-   `sports_analytics_test` (a `session`-scoped fixture; built once).
-2. **Schema setup** — before tests run, `Base.metadata.create_all` on that engine
-   so the test DB has your tables. (Import all model modules first so
-   `Base.metadata` "sees" every table.)
-3. **Session fixture** — for each test: open a connection, begin a transaction,
-   bind a session to it, `yield` the session, then roll the transaction back.
+### 8a. `test_engine` — the shared connection pool
 
-Rough shape (pseudocode — fill in the real calls):
+```python
+@pytest.fixture(scope="session")
+async def test_engine():
+    engine = create_async_engine(TEST_DATABASE_URL)
+    yield engine
+    await engine.dispose()
+```
+
+An **engine** is not a connection — it's the *manager* of a pool of connections.
+Picture a bank of phone lines to Postgres kept open and ready: code borrows a line,
+talks, and hands it back, which is far cheaper than dialing fresh every time.
+`create_async_engine` sets that up; `engine.dispose()` hangs up every line at the end
+so no connections leak past the run.
+
+It's **`scope="session"`** — built once for the whole run and shared by every test —
+because standing up an engine and its pool is relatively expensive. Sharing one
+engine is safe; test isolation is *not* the engine's job, it's the `session`
+fixture's (see 8c).
+
+On `yield`: a fixture with `yield` is split in two. Everything before `yield` is
+setup, the yielded value is handed to whoever asked for it, and everything after
+`yield` runs as teardown — with the function *frozen* in place while the tests use
+it. Think of it as a "semi-return" that resumes later. That freeze is why the engine
+stays alive for the whole session and only disposes at the very end.
+
+### 8b. `_create_schema` — build the tables once, drop them after
+
+```python
+@pytest.fixture(scope="session", autouse=True)
+async def _create_schema(test_engine):
+    async with test_engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)   # committed on block exit
+    yield
+    async with test_engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
+```
+
+**`autouse=True`** makes this run automatically for the session — no test has to ask
+for it. `create_all` reads every table registered on `Base.metadata` and issues the
+`CREATE TABLE`s; this is why all model modules are imported at the top of
+`conftest.py` (importing a model *registers* its table, and `create_all` only builds
+tables it knows about).
+
+The subtle, important part: **`create_all` must commit before the `yield`.** Here it
+runs inside its own `async with test_engine.begin()` block, and that block *commits
+when it exits* — the line right before `yield`. That matters because the `session`
+fixture opens a **different** connection, and in Postgres one connection cannot see
+another connection's *uncommitted* work. If you left `create_all` inside the same
+open transaction as the `yield` (an easy mistake — see §9a), the tables would exist
+only on that one held-open connection, and every test would fail with
+`relation "..." does not exist`. Commit first, and the tables become visible to all
+connections.
+
+`run_sync` is a small adapter: `create_all`/`drop_all` are older *synchronous*
+SQLAlchemy helpers, and `run_sync` lets an async connection run a sync function.
+
+The matching `drop_all` after `yield` wipes the tables at the end, leaving the test
+DB empty. (Leaving it out is also valid — `create_all` skips tables that already
+exist — but dropping keeps things clean when models change. We briefly commented
+`drop_all` out to *see* the tables via `psql \dt`; that's why they were persisting.)
+
+### 8c. `session` — one rolled-back transaction per test
 
 ```python
 @pytest.fixture
 async def session(test_engine):
-    async with test_engine.connect() as conn:
-        txn = await conn.begin()
-        Session = async_sessionmaker(bind=conn, expire_on_commit=False)
-        async with Session() as s:
-            yield s
-        await txn.rollback()
+    async with test_engine.connect() as connection:
+        transaction = await connection.begin()
+        session = async_sessionmaker(bind=connection, expire_on_commit=False)
+        async with session() as sesh:
+            yield sesh
+        await transaction.rollback()
 ```
 
-Once this resolves against a running test DB, the model tests stop erroring at
-setup and start executing.
+This is the harness each test plugs into. It's **function-scoped** (the default), so
+it runs fresh for every test. The sequence:
 
-**Suggested order to implement:**
+1. open a dedicated connection and **begin an outer transaction** on it,
+2. bind a session to that same connection and hand it to the test,
+3. when the test finishes, close the session and **roll the outer transaction back**.
 
-1. `session` fixture in `conftest.py` (+ test engine + schema setup)
-2. `test_constraints.py` — most self-contained; quickest green
-3. `test_relationships.py` — cascade + 1:1 navigation
-4. `test_hypertables.py` — hardest; runs the real migration, queries the catalog
+The rollback is the isolation trick: everything the test inserted vanishes, so the
+next test starts clean and no test depends on another. Crucially, it undoes **rows,
+not tables** — the schema was committed once in `_create_schema` and stays put; only
+the per-test *data* is thrown away. Two separate layers: the schema is the stage
+(built once, persists), the rows are the actors (cleared after each scene).
+
+One nice property: because the connection is *already* inside a transaction when the
+session starts, SQLAlchemy 2.0 nests the session's work in a **SAVEPOINT** by default
+(`join_transaction_mode="conditional_savepoint"`). So even a test that calls
+`session.commit()` stays contained — the commit only releases the savepoint, and the
+outer `rollback()` still wipes everything. You get real isolation whether or not a
+test commits.
+
+`expire_on_commit=False` keeps ORM objects usable *after* a commit. Without it,
+SQLAlchemy expires an object's attributes on commit and re-fetches them on next
+access — annoying when a test wants to assert on an object it just saved.
+
+(Readability note: the local `session` here shadows the fixture name. It works, but
+renaming it `Session` — the convention for a session *factory* — reads cleaner.)
+
+### 8d. Suggested order to write the test bodies
+
+The fixtures are done; these are the remaining `...` bodies to fill:
+
+1. **`test_constraints.py`** — most self-contained; quickest green. Insert bad data,
+   `await session.flush()`, and assert `pytest.raises(IntegrityError)`.
+2. **`test_relationships.py`** — cascade delete + 1:1 navigation.
+3. **`migrated_db` fixture + `test_hypertables.py`** — hardest; runs the real Alembic
+   migration (not `create_all`) against the test DB, then queries Timescale's catalog.
+   See §3c for why this one needs the migration instead of `create_all`.
+
+---
+
+## 9. Environment gotchas (things that bit us)
+
+Real problems hit while wiring this up, and how each was fixed — so future-you
+recognizes the symptom instead of re-debugging from scratch.
+
+### 9a. Tables "don't exist" — `create_all` never committed
+
+**Symptom:** the schema fixture runs without error, but every test fails with
+`relation "..." does not exist`, or `psql \dt` shows nothing.
+
+**Cause:** `create_all` ran inside a transaction that stayed open — e.g. the `yield`
+sat *inside* the `async with test_engine.begin()` block. `begin()` only commits when
+its block exits, so the `CREATE TABLE`s never committed, and the separate connection
+each test uses couldn't see them (Postgres hides one connection's uncommitted work
+from others).
+
+**Fix:** let the `create_all` block close (and commit) *before* the `yield`, and do
+`drop_all` in its own block afterward — the shape in §8b.
+
+### 9b. A moved project folder breaks the venv
+
+**Symptom:** after moving the repo (we moved `CapSpace` from `~/Desktop` to
+`~/Developer`), `python` wasn't found, `echo $VIRTUAL_ENV` still pointed at the old
+`~/Desktop/...` path even right after activating, and PyCharm couldn't see installed
+packages.
+
+**Cause:** **virtualenvs aren't relocatable.** When a venv is created, its absolute
+path is baked into `.venv/bin/activate` and into the shebang of every console tool
+(`pytest`, `alembic`, …). Moving the folder doesn't rewrite any of that, so it all
+still points at the old location.
+
+**Fix:** recreate the venv in place — fast, since `uv.lock` reproduces it exactly:
+
+```bash
+cd ~/Developer/CapSpace/backend
+rm -rf .venv
+uv sync
+```
+
+Do the same in `ml/`. Both venvs were rebuilt this way.
+
+### 9c. `uv` "ignores" your activated environment
+
+**Symptom:** `uv sync` warns `VIRTUAL_ENV=... does not match the project environment
+path .venv and will be ignored`.
+
+**What to know:** `uv` finds the environment from the **directory you're in** (the
+nearest `pyproject.toml`), *not* from whatever venv is activated — so a stale
+activated venv is simply ignored, with that warning. Two practical rules:
+
+- `uv run <cmd>`, `uv sync`, `uv add` care about your *location*, not activation.
+- Activation (`source .venv/bin/activate`) only matters for **bare** commands like
+  `python` or `pytest`. `uv run pytest` sidesteps activation entirely — the tidiest
+  way to dodge this whole class of mismatch.
+
+Don't "fix" the warning with `--active` (that targets the wrong venv); just stop
+having a stale one activated, or use `uv run`.
+
+### 9d. PyCharm doesn't see the packages
+
+**Symptom:** imports underline red / the interpreter's package list is empty, even
+though `uv run python -c "import fastapi"` works fine in the terminal.
+
+**What to check:**
+
+- Point each module's interpreter at its own venv: **Settings → Project → Python
+  Interpreter → Add Local Interpreter → Select existing → Virtualenv**, path
+  `~/Developer/CapSpace/backend/.venv/bin/python` (and the `ml` one for that module).
+  This is a multi-module project — backend and ml each have a separate venv; `uv`
+  itself is a single shared tool at `~/.local/bin/uv`.
+- **Invalidate Caches only re-indexes** the configured interpreter — it can't repair
+  one pointing at a stale path. If the interpreter was created against the old
+  location, delete it and add a fresh one.
+- Confirm the env independently first: `uv run python -c "import fastapi, sqlalchemy"`.
+  If that works, the problem is entirely on the IDE side.
+
+**Connecting PyCharm's Database tool to the Docker Postgres:** the DB runs *inside*
+the `sports-analytics-db` container (its data in a Docker named volume), reached from
+your Mac through the `5432:5432` port mapping. Add a **PostgreSQL** data source —
+host `localhost`, port `5432`, database `sports_analytics_test`, user `postgres`,
+password `password`. TimescaleDB is just Postgres + an extension, so the plain
+PostgreSQL driver is correct.
+
+### 9e. `pytest tests/conftest.py` builds nothing
+
+**Symptom:** running that collects `0 items` and no tables get created.
+
+**Cause:** `conftest.py` holds *fixtures*, not tests — pytest reads it automatically
+to *supply* fixtures; you never run it directly. (A `@pytest.fixture` named `test_*`
+is still not collected as a test.) With zero tests collected, the `autouse` schema
+fixture never fires.
+
+**Fix:** run real test files/dirs — `uv run pytest tests/test_models -v`, or one test
+like `uv run pytest tests/test_models/test_constraints.py::test_engine_connects`.
+
+### 9f. Covered elsewhere
+
+- **`RuntimeError: ... attached to a different loop`** → the event-loop scope fix in
+  §3d / §5.
+- **Tables persist after the run** → `drop_all` was commented out on purpose to
+  inspect them; re-enable it (§8b).
 
 ---
 

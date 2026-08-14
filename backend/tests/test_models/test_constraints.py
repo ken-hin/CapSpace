@@ -1,67 +1,75 @@
 """Constraint tests — prove the DATABASE rejects invalid data.
 
-These are the "unhappy path" tests. For each one you deliberately try to write
-data that breaks a constraint, then assert the database raises IntegrityError.
-If no error is raised, the guardrail isn't actually protecting you.
+"Unhappy path" tests: deliberately write data that breaks a constraint and
+assert the database raises IntegrityError. Runs against the real test DB via the
+`session` fixture (conftest.py), which rolls back after each test.
 
-Runs against the real test DB (see the setup notes in conftest.py). Every test
-below asks for the `session` fixture, which hands you a rolled-back-after
-AsyncSession so nothing you insert here survives into the next test.
-
---------------------------------------------------------------------------------
-IMPORTS YOU'LL LIKELY NEED (write them yourself):
-    import pytest
-    from sqlalchemy.exc import IntegrityError
-    from app.models.venue import Venue
-    from app.sports.mlb.models.park_factor import ParkFactor
-
-WHY flush()? `await session.flush()` sends the pending INSERT to Postgres NOW,
-which is when the constraint is actually checked — so the IntegrityError fires
-inside your `pytest.raises(...)` block instead of later. (commit would also work
-but ends the transaction; flush keeps it open so the fixture can roll back.)
-
-NOTE: once a flush raises IntegrityError the transaction is "poisoned" — don't
-keep using the same session after the expected failure. One failing write per
-test; the fixture rolls back when the test ends.
---------------------------------------------------------------------------------
+`await session.flush()` sends the INSERT so the constraint fires now, inside the
+`pytest.raises(...)` block. Once it raises, the transaction is poisoned — one
+failing write per test, then the fixture rolls back.
 """
 
+import pytest
+from sqlalchemy.exc import IntegrityError
+from app.models.enums import Sport
+from app.models.venue import Venue
+from app.sports.mlb.models.park_factor import ParkFactor
 
-# TEST 1 — UNIQUE constraint: no two ParkFactors for the same (venue_id, season).
-# Your model declares:  UniqueConstraint("venue_id", "season", name="uq_park_factors_venue_season")
+
 async def test_duplicate_venue_season_is_rejected(session):
-    # ARRANGE
-    #   1. Create a Venue (ParkFactor.venue_id is a FK → venues.id, so a real
-    #      venue must exist first). Add it, then `await session.flush()` to get
-    #      its generated id.
-    #   2. Create ParkFactor #1 for (venue.id, season=2025). Add + flush.
-    #      This one should succeed.
-    #
-    # ACT + ASSERT
-    #   3. Create ParkFactor #2 for the SAME (venue.id, 2025). Add it, then:
-    #
-    #          with pytest.raises(IntegrityError):
-    #              await session.flush()
-    #
-    #      The test passes only if that flush raises.
-    ...
+    """Two ParkFactor rows sharing the same unique key are rejected.
+
+    Proves the composite ``UniqueConstraint`` holds at the database level: the
+    first row inserts cleanly, and the second — identical on the unique key —
+    raises ``IntegrityError`` when flushed. The venue is created first so both
+    park factors reference a real parent, isolating the failure to the unique
+    rule rather than a foreign-key violation.
+
+    Note:
+        The full key is ``(venue_id, season, window_years)``; ``window_years``
+        defaults to 3 on both rows, which is what makes them collide.
+    """
+    # Create a venue and flush so its generated id is available as a FK.
+    t_venue = Venue(name="Test Venue", city="Nashville", sport=Sport.MLB, external_id="t_venue_id")
+    session.add(t_venue)
+    await session.flush()
+
+    # First ParkFactor for this venue+season: flush it in so the next one collides.
+    session.add(ParkFactor(venue_id=t_venue.id,  season=2025))
+    await session.flush()
+
+    # Second ParkFactor on the same unique key -> the flush must raise.
+    session.add(ParkFactor(venue_id=t_venue.id, season=2025))
+    with pytest.raises(IntegrityError):
+        await session.flush()
 
 
-# TEST 2 — NOT NULL: a required column can't be empty.
-# e.g. ParkFactor.venue_id and .season are nullable=False.
 async def test_missing_required_field_is_rejected(session):
-    # ARRANGE: build a ParkFactor but leave a required field unset (e.g. no season).
-    # ACT + ASSERT: add it and expect flush to raise IntegrityError.
-    #
-    #     with pytest.raises(IntegrityError):
-    #         await session.flush()
-    ...
+    """A ParkFactor missing a required field (``season=None``) is rejected.
+
+    ``season`` is ``nullable=False``, so a NULL violates the not-null
+    constraint. The row is otherwise valid — it points at a real venue — so the
+    flush fails specifically on the missing value, raising ``IntegrityError``.
+    """
+    t_venue = Venue(name="Test Venue", city="Nashville", sport=Sport.MLB, external_id="t_venue_id")
+    session.add(t_venue)
+    await session.flush()
+
+    # season is NOT NULL; passing None violates that constraint on flush.
+    session.add(ParkFactor(venue_id=t_venue.id, season=None))
+    with pytest.raises(IntegrityError):
+        await session.flush()
 
 
-# TEST 3 (stretch) — FOREIGN KEY: can't point at a venue that doesn't exist.
 async def test_orphan_foreign_key_is_rejected(session):
-    # ARRANGE: ParkFactor with venue_id = 999999 (no such venue) + a valid season.
-    # ACT + ASSERT: flush raises IntegrityError.
-    #     with pytest.raises(IntegrityError):
-    #         await session.flush()
-    ...
+    """A ParkFactor whose ``venue_id`` points at no venue is rejected.
+
+    ``venue_id`` is a foreign key into ``venues``; using an id that does not
+    exist violates referential integrity, so the database refuses the INSERT
+    with ``IntegrityError`` on flush. No venue is created here — the missing
+    parent is the whole point.
+    """
+    # venue_id 999999 has no matching venues row -> foreign-key violation on flush.
+    session.add(ParkFactor(venue_id=999999, season=2024))
+    with pytest.raises(IntegrityError):
+        await session.flush()

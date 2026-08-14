@@ -9,36 +9,37 @@ description = "Real-time sports analytics platform — FastAPI backend"
 requires-python = ">=3.11"
 dependencies = [
     # FastAPI + server
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.34",
-    "pydantic-settings>=2.0",
+    "fastapi==0.141.1",
+    "uvicorn[standard]==0.52.3",
+    "pydantic-settings==2.15.0",
     # Database (async PostgreSQL)
-    "sqlalchemy[asyncio]>=2.0",
+    "sqlalchemy[asyncio]==2.0.52",
     "asyncpg>=0.30",
-    "alembic>=1.14",
+    "alembic==1.19.1",
     # Redis
-    "redis[hiredis]>=5.0",
+    "redis[hiredis]==8.1.0",
     # Celery (task queue)
     "celery[redis]>=5.0",
     # HTTP client (for scrapers)
     "httpx>=0.28",
     # Data processing
-    "pandas>=2.0",
+    "pandas==3.0.5",
     # Auth
     "python-jose[cryptography]>=3.0",
     "passlib[bcrypt]>=1.0",
     # Utilities
     "python-dotenv>=1.0",
     "sphinx>=9.0.4",
-    "pandas-stubs~=3.0.3",
+    "pandas-stubs==3.0.5.260730",
     "lxml>=6.1.1",
-    "playwright>=1.60.0",
+    "playwright==1.62.0",
 ]
 
 [dependency-groups]
 test = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
+    "psycopg2-binary>=2.9",  # sync driver for the migration/hypertable test (admin + catalog queries)
 ]
 dev = [
     {include-group = "test"},
@@ -46,6 +47,8 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope="session"
+asyncio_default_test_loop_scope="session"
 testpaths = ["tests"]
 
 [build-system]
