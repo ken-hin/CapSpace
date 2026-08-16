@@ -32,16 +32,16 @@
 
 <div class="space-y-8">
   <div>
-    <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-    <p class="mt-2 text-gray-600">Live scores, stats, and pre-game predictions.</p>
+    <h1 class="text-3xl font-bold">Dashboard</h1>
+    <p class="mt-2">Live scores, stats, and pre-game predictions.</p>
   </div>
 
   <section>
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">Live Games</h2>
+    <h2 class="text-xl font-semibold  mb-4">Live Games</h2>
     {#if loading}
-      <p class="text-gray-500">Loading...</p>
+      <p class="">Loading...</p>
     {:else if liveGames.length === 0}
-      <div class="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center text-gray-500">No live games right now.</div>
+      <div class="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">No live games right now.</div>
     {:else}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each liveGames as game}
@@ -61,9 +61,9 @@
   </section>
 
   <section>
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">Upcoming Games</h2>
+    <h2 class="text-xl font-semibold mb-4">Upcoming Games</h2>
     {#if upcomingGames.length === 0}
-      <p class="text-gray-500">No upcoming games scheduled.</p>
+      <p class="">No upcoming games scheduled.</p>
     {:else}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each upcomingGames as game}
