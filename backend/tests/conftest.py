@@ -3,20 +3,30 @@
 Fixtures here are auto-discovered by pytest across all test modules. They fall into
 two groups: an async HTTP ``client`` bound directly to the FastAPI app via an
 in-process ASGI transport (no network or running server required), and a database
-test harness — ``test_engine`` builds a session-wide engine against a separate test
-database, ``_create_schema`` creates and drops the tables around the run, and
-``session`` hands each test an isolated AsyncSession that is rolled back afterward.
+test harness — ``_ensure_test_database`` creates the test database if it's missing,
+``test_engine`` builds a session-wide engine against that separate test database,
+``_create_schema`` creates and drops the tables around the run, and ``session`` hands
+each test an isolated AsyncSession that is rolled back afterward.
 """
 
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.models.base import Base
 import app.models            # noqa: F401
 import app.sports.mlb.models # noqa: F401
 
 TEST_DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/sports_analytics_test"
+
+# Name of the throwaway test database, plus a *synchronous* (psycopg2) URL to the
+# always-present ``postgres`` maintenance database — the one place CREATE DATABASE for the
+# test DB can be issued from. Kept next to TEST_DATABASE_URL so every test-DB coordinate
+# lives in one spot. The migration test uses the same admin URL for the same reason:
+# CREATE/DROP DATABASE can't run over asyncpg inside a transaction.
+TEST_DATABASE_NAME = "sports_analytics_test"
+ADMIN_DATABASE_URL = "postgresql+psycopg2://postgres:password@localhost:5432/postgres"
 
 @pytest.fixture
 async def client():
@@ -33,9 +43,50 @@ async def client():
         yield ac
 
 
+# ─────────────────────────────── TEST DATABASE BOOTSTRAP ───────────────────────────────────
+@pytest.fixture(scope="session")
+def _ensure_test_database():
+    """Create the ``sports_analytics_test`` database once, if it doesn't already exist.
+
+    This closes a gap that used to bite on any fresh machine: ``test_engine`` connects
+    *straight* to ``sports_analytics_test`` and ``_create_schema``'s ``create_all`` only
+    builds tables *inside* it — neither one ever issues ``CREATE DATABASE``. So on a checkout
+    where the manual ``createdb`` step (docs/testing_guide.md §4) had never been run, every
+    test errored with ``InvalidCatalogNameError: database "sports_analytics_test" does not
+    exist``. With this fixture a fresh clone + ``docker compose up -d db`` + ``pytest`` just
+    works, no manual step.
+
+    It mirrors the ``migrated_db`` fixture in ``tests/test_migrations``: talk to the
+    always-present ``postgres`` maintenance database through a *synchronous* psycopg2 engine
+    in AUTOCOMMIT mode — ``CREATE DATABASE`` cannot run inside a transaction, and psycopg2 is
+    the clean path for one-off admin DDL (asyncpg is awkward for it, which is exactly why the
+    migration test reaches for psycopg2 too). It checks the ``pg_database`` catalog and
+    creates the database only when it's missing. Unlike ``migrated_db`` it never drops the
+    DB: the test database is meant to persist between runs — ``create_all``/``drop_all``
+    manage the *tables* — so the next run finds it already there and skips straight past.
+
+    Plain ``def`` (not ``async``) on purpose: it does all its work through psycopg2 before any
+    async engine touches the test DB, and ``test_engine`` names it as a dependency so it is
+    guaranteed to finish first.
+    """
+    # The maintenance DB always exists; AUTOCOMMIT because CREATE DATABASE can't run in a txn.
+    admin = create_engine(ADMIN_DATABASE_URL, isolation_level="AUTOCOMMIT")
+    with admin.connect() as connection:
+        already_exists = connection.execute(
+            text("SELECT 1 FROM pg_database WHERE datname = :name"),
+            {"name": TEST_DATABASE_NAME},
+        ).scalar()
+        if not already_exists:
+            # A database name is an identifier, so it can't be a bound parameter — it has to
+            # be interpolated. Safe here because TEST_DATABASE_NAME is a hard-coded constant,
+            # never user input.
+            connection.execute(text(f'CREATE DATABASE {TEST_DATABASE_NAME}'))
+    admin.dispose()  # drop the admin pool; the test DB now exists for test_engine to use
+
+
 # ───────────────────────────────────── TEST ENGINE ──────────────────────────────────────────
 @pytest.fixture(scope="session")
-async def test_engine():
+async def test_engine(_ensure_test_database):
     """Provide one async Engine for the whole test session, bound to the TEST database.
 
     The engine owns the connection pool and is the entry point for talking to
@@ -43,6 +94,10 @@ async def test_engine():
     and its pool is relatively expensive and every test can safely share it —
     per-test isolation is handled separately by the ``session`` fixture's rollback,
     not by giving each test its own engine.
+
+    Depends on ``_ensure_test_database`` so the target database is guaranteed to exist
+    before the pool opens its first connection — without that ordering the engine would
+    point at a missing DB and every test would error before it started.
 
     Yields:
         AsyncEngine: Engine connected to ``sports_analytics_test``.
